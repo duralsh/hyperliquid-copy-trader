@@ -119,27 +119,6 @@ export async function sendShutdownNotification(): Promise<void> {
   // Skip shutdown post - high quality events only
 }
 
-export async function sendHealthCheckNotification(_healthCheck: unknown): Promise<void> {
-  // Skip health check posts - high quality events only
-}
-
-export async function sendSummaryNotification(_stats: unknown): Promise<void> {
-  // Skip summary posts
-}
-
-export async function sendWarningNotification(
-  warning: string,
-  context?: Record<string, unknown>
-): Promise<void> {
-  logger.warn(warning, context);
-}
-
-export async function sendInfoNotification(
-  info: string,
-  context?: Record<string, unknown>
-): Promise<void> {
-  logger.info(info, context);
-}
 
 export async function cleanupTelegramBot(): Promise<void> {
   await sendShutdownNotification();

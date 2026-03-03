@@ -3,13 +3,14 @@ import type {
   TraderFill,
   BotStatus,
   BotConfig,
-  BotTradeEvent,
   LeaderboardQuery,
   LeaderboardResponse,
   MyAccountData,
   ArenaFeedResponse,
   ArenaPost,
   SmartFilterResponse,
+  CloseAllResult,
+  ClosePositionResult,
 } from "../../../shared/types.js";
 
 const BASE = "/api";
@@ -43,14 +44,6 @@ export function fetchTraderFills(address: string): Promise<TraderFill[]> {
   return fetchJSON(`${BASE}/trader/${address}/fills`);
 }
 
-export function fetchBotStatus(): Promise<BotStatus> {
-  return fetchJSON(`${BASE}/bot/status`);
-}
-
-export function fetchBotTrades(): Promise<BotTradeEvent[]> {
-  return fetchJSON(`${BASE}/bot/trades`);
-}
-
 export function startBot(config: BotConfig): Promise<BotStatus> {
   return fetchJSON(`${BASE}/bot/start`, {
     method: "POST",
@@ -68,21 +61,8 @@ export function fetchMyAccount(): Promise<MyAccountData> {
   return fetchJSON(`${BASE}/account`);
 }
 
-export interface CloseAllResult {
-  closed: { coin: string; side: string; size: string }[];
-  errors: { coin: string; error: string }[];
-}
-
 export function closeAllPositions(): Promise<CloseAllResult> {
   return fetchJSON(`${BASE}/account/close-all`, { method: "POST" });
-}
-
-export interface ClosePositionResult {
-  success: boolean;
-  coin: string;
-  side?: string;
-  size?: string;
-  error?: string;
 }
 
 export function closePosition(coin: string): Promise<ClosePositionResult> {

@@ -53,23 +53,6 @@ export class ValidationError extends AppError {
   }
 }
 
-export class ConfigError extends AppError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super(message, "CONFIG_ERROR", false, context);
-  }
-}
-
-export class RateLimitError extends AppError {
-  constructor(message: string, retryAfter?: number, context?: Record<string, unknown>) {
-    super(message, "RATE_LIMIT_ERROR", true, { ...context, retryAfter });
-  }
-}
-
-export class AccountError extends AppError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super(message, "ACCOUNT_ERROR", false, context);
-  }
-}
 
 export class ErrorHandler {
   static isRetryable(error: unknown): boolean {
@@ -158,7 +141,7 @@ export async function retryWithBackoff<T>(
   for (let attempt = 1; attempt <= config.maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error) {
+    } catch (error: unknown) {
       lastError = error;
       if (!ErrorHandler.isRetryable(error)) throw error;
       if (attempt >= config.maxRetries) break;

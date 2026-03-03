@@ -57,5 +57,5 @@ export function useWebSocket() {
     };
   }, [connect]);
 
-  return { connected, botStatus, trades, setTrades };
+  return { connected, botStatus, trades };
 }

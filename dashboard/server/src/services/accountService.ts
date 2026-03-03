@@ -1,14 +1,12 @@
-import type { MyAccountData, MyAccountPosition } from "../../../shared/types.js";
+import type { MyAccountData, MyAccountPosition, CloseAllResult, ClosePositionResult } from "../../../shared/types.js";
+import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex } from "./hlClient.js";
+import { arenaRequest } from "./arenaClient.js";
 
-const HL_INFO_URL = "https://api-ui.hyperliquid.xyz/info";
+export type { CloseAllResult, ClosePositionResult } from "../../../shared/types.js";
+
 const CACHE_TTL = 10_000; // 10s
 
 let cache: { data: MyAccountData; fetchedAt: number } | null = null;
-
-/** Read lazily so dotenv has time to load (ESM hoists imports before dotenv.config()). */
-function getArenaBaseUrl(): string {
-  return (process.env.ARENA_BASE_URL ?? "https://api.starsarena.com").replace(/\/$/, "");
-}
 
 function getWalletAddress(): string {
   const addr = process.env.MAIN_WALLET_ADDRESS ?? "";
@@ -16,27 +14,6 @@ function getWalletAddress(): string {
     throw new Error("MAIN_WALLET_ADDRESS is not configured in environment");
   }
   return addr;
-}
-
-function getArenaApiKey(): string {
-  const key = process.env.ARENA_API_KEY ?? "";
-  if (!key) {
-    throw new Error("ARENA_API_KEY is not configured in environment");
-  }
-  return key;
-}
-
-export interface CloseAllResult {
-  closed: { coin: string; side: string; size: string }[];
-  errors: { coin: string; error: string }[];
-}
-
-export interface ClosePositionResult {
-  success: boolean;
-  coin: string;
-  side?: string;
-  size?: string;
-  error?: string;
 }
 
 /**
@@ -57,51 +34,26 @@ export async function closePosition(coin: string): Promise<ClosePositionResult> 
     return { success: false, coin, error: `Position size is zero for ${coin}` };
   }
 
-  const apiKey = getArenaApiKey();
   const isLong = size > 0;
   const positionSide = isLong ? "long" : "short";
 
   // Fetch current market price
-  const midsRes = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "allMids" }),
-  });
-
-  if (!midsRes.ok) {
-    throw new Error(`Failed to fetch market prices: ${midsRes.status}`);
-  }
-
-  const allMids = (await midsRes.json()) as Record<string, string>;
+  const allMids = await hlInfoRequest<Record<string, string>>({ type: "allMids" });
   const midPrice = parseFloat(allMids[coin] ?? "0");
 
   if (midPrice <= 0) {
     return { success: false, coin, error: "Could not determine market price" };
   }
 
-  const body = {
-    provider: "HYPERLIQUID",
-    symbol: coin,
-    positionSide,
-    size: Math.abs(size),
-    currentPrice: midPrice,
-    closePercent: 100,
-  };
-
   try {
-    const res = await fetch(`${getArenaBaseUrl()}/agents/perp/orders/close-position`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-      },
-      body: JSON.stringify(body),
+    await arenaRequest("POST", "/agents/perp/orders/close-position", {
+      provider: "HYPERLIQUID",
+      symbol: coin,
+      positionSide,
+      size: Math.abs(size),
+      currentPrice: midPrice,
+      closePercent: 100,
     });
-
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => res.statusText);
-      return { success: false, coin, error: `API ${res.status}: ${errBody}` };
-    }
 
     // Invalidate cache so next fetch reflects the closed position
     cache = null;
@@ -112,7 +64,7 @@ export async function closePosition(coin: string): Promise<ClosePositionResult> 
       side: positionSide,
       size: String(Math.abs(size)),
     };
-  } catch (err) {
+  } catch (err: unknown) {
     return {
       success: false,
       coin,
@@ -133,70 +85,46 @@ export async function closeAllPositions(): Promise<CloseAllResult> {
     return { closed: [], errors: [] };
   }
 
-  const apiKey = getArenaApiKey();
   const result: CloseAllResult = { closed: [], errors: [] };
 
   // Fetch current market prices for all position coins
-  const midsRes = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "allMids" }),
-  });
+  const allMids = await hlInfoRequest<Record<string, string>>({ type: "allMids" });
 
-  if (!midsRes.ok) {
-    throw new Error(`Failed to fetch market prices: ${midsRes.status}`);
-  }
+  // Close all positions in parallel — each is independent
+  const closePromises = account.positions
+    .filter((pos) => parseFloat(pos.szi) !== 0)
+    .map(async (pos) => {
+      const size = parseFloat(pos.szi);
+      const isLong = size > 0;
+      const positionSide = isLong ? "long" : "short";
+      const midPrice = parseFloat(allMids[pos.coin] ?? "0");
 
-  const allMids = (await midsRes.json()) as Record<string, string>;
-
-  for (const pos of account.positions) {
-    const size = parseFloat(pos.szi);
-    if (size === 0) continue;
-
-    const isLong = size > 0;
-    const positionSide = isLong ? "long" : "short";
-    const midPrice = parseFloat(allMids[pos.coin] ?? "0");
-
-    if (midPrice <= 0) {
-      result.errors.push({ coin: pos.coin, error: "Could not determine market price" });
-      continue;
-    }
-
-    const body = {
-      provider: "HYPERLIQUID",
-      symbol: pos.coin,
-      positionSide,
-      size: Math.abs(size),
-      currentPrice: midPrice,
-      closePercent: 100,
-    };
-
-    try {
-      const res = await fetch(`${getArenaBaseUrl()}/agents/perp/orders/close-position`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => res.statusText);
-        result.errors.push({ coin: pos.coin, error: `API ${res.status}: ${errBody}` });
-        continue;
+      if (midPrice <= 0) {
+        return { coin: pos.coin, error: "Could not determine market price" } as const;
       }
 
-      result.closed.push({
-        coin: pos.coin,
-        side: positionSide,
-        size: String(Math.abs(size)),
-      });
-    } catch (err) {
-      result.errors.push({
-        coin: pos.coin,
-        error: err instanceof Error ? err.message : "Unknown error",
-      });
+      try {
+        await arenaRequest("POST", "/agents/perp/orders/close-position", {
+          provider: "HYPERLIQUID",
+          symbol: pos.coin,
+          positionSide,
+          size: Math.abs(size),
+          currentPrice: midPrice,
+          closePercent: 100,
+        });
+        return { coin: pos.coin, side: positionSide, size: String(Math.abs(size)) } as const;
+      } catch (err: unknown) {
+        return { coin: pos.coin, error: err instanceof Error ? err.message : "Unknown error" } as const;
+      }
+    });
+
+  const outcomes = await Promise.all(closePromises);
+
+  for (const outcome of outcomes) {
+    if ("error" in outcome) {
+      result.errors.push({ coin: outcome.coin, error: outcome.error });
+    } else {
+      result.closed.push({ coin: outcome.coin, side: outcome.side, size: outcome.size });
     }
   }
 
@@ -204,34 +132,6 @@ export async function closeAllPositions(): Promise<CloseAllResult> {
   cache = null;
 
   return result;
-}
-
-/** DEXes to query — main perps clearinghouse + xyz (HIP-3) DEX. */
-const ACCOUNT_DEXES: (string | undefined)[] = [undefined, "xyz"];
-
-interface ClearinghouseState {
-  marginSummary?: Record<string, string>;
-  assetPositions?: { position?: Record<string, unknown> }[];
-}
-
-async function fetchClearinghouseForDex(
-  address: string,
-  dex?: string,
-): Promise<ClearinghouseState | null> {
-  const body: Record<string, unknown> = { type: "clearinghouseState", user: address };
-  if (dex !== undefined) body.dex = dex;
-
-  const res = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) return null;
-
-  const json = await res.json();
-  if (!json || typeof json !== "object") return null;
-  return json as ClearinghouseState;
 }
 
 export async function fetchMyAccount(): Promise<MyAccountData> {

@@ -51,9 +51,3 @@ export async function getPair(symbol: string): Promise<TradingPair> {
   return pair;
 }
 
-/**
- * Invalidate the local cache so the next call re-fetches.
- */
-export function invalidatePairsCache(): void {
-  cache = null;
-}

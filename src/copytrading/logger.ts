@@ -32,32 +32,8 @@ export const loggerUtils = {
     message: string,
     meta?: Record<string, unknown>
   ) => logger[level](message, { ...meta, context: "trading", type: "trade" }),
-  logApiCall: (
-    method: string,
-    endpoint: string,
-    duration?: number,
-    success?: boolean,
-    error?: unknown
-  ) => {
-    const meta: Record<string, unknown> = { method, endpoint };
-    if (duration != null) meta.duration = `${duration}ms`;
-    if (success != null) meta.success = success;
-    if (error) meta.error = error instanceof Error ? error.message : String(error);
-    logger.info(`API: ${method} ${endpoint}`, meta);
-  },
   logPerformance: (operation: string, duration: number, meta?: Record<string, unknown>) =>
     logger.debug(`Perf: ${operation}`, { ...meta, duration: `${duration}ms`, operation }),
   logWebSocket: (event: string, message: string, meta?: Record<string, unknown>) =>
     logger.info(`WS [${event}] ${message}`, { ...meta, context: "websocket", event }),
-  logHealthCheck: (
-    status: "healthy" | "warning" | "error",
-    message: string,
-    meta?: Record<string, unknown>
-  ) => {
-    const level = status === "healthy" ? "info" : status === "warning" ? "warn" : "error";
-    logger[level](`Health [${status}] ${message}`, { ...meta, status });
-  },
-  logConfig: (action: string, key: string, value?: unknown, meta?: Record<string, unknown>) =>
-    logger.info(`Config ${action}: ${key}`, { ...meta, key, value, action }),
-  child: (meta: Record<string, unknown>) => ({ ...logger, defaultMeta: meta }),
 };

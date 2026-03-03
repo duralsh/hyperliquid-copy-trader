@@ -61,11 +61,3 @@ export interface TradeResult {
   params: CopyTradeParams;
 }
 
-export interface HealthCheckResult {
-  timestamp: number;
-  ourPositions: Position[];
-  targetPositions: Position[];
-  ourEquity: string;
-  targetEquity: string;
-  drift: Record<string, { ourSize: string; targetSize: string; difference: string }>;
-}

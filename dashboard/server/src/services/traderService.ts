@@ -1,39 +1,12 @@
 import type { TraderDetail, TraderPosition, TraderFill } from "../../../shared/types.js";
+import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex, type ClearinghouseState } from "./hlClient.js";
 
-const HL_INFO_URL = "https://api-ui.hyperliquid.xyz/info";
 const CACHE_TTL = 10_000; // 10s
-
-/** DEXes to query — main perps clearinghouse + xyz (HIP-3) DEX. */
-const DEXES: (string | undefined)[] = [undefined, "xyz"];
+const FILLS_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const MAX_RECENT_FILLS = 100;
 
 const cache = new Map<string, { data: TraderDetail; fetchedAt: number }>();
 const fillsCache = new Map<string, { data: TraderFill[]; fetchedAt: number }>();
-
-interface ClearinghouseState {
-  marginSummary?: Record<string, string>;
-  assetPositions?: { position?: Record<string, unknown> }[];
-}
-
-async function fetchClearinghouseForDex(
-  address: string,
-  dex?: string,
-): Promise<ClearinghouseState | null> {
-  const body: Record<string, unknown> = { type: "clearinghouseState", user: address };
-  if (dex !== undefined) body.dex = dex;
-
-  const res = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) return null;
-
-  const json = await res.json();
-  // API returns null for DEXes the user never interacted with
-  if (!json || typeof json !== "object") return null;
-  return json as ClearinghouseState;
-}
 
 function extractPositions(state: ClearinghouseState): TraderPosition[] {
   const positions: TraderPosition[] = [];
@@ -63,7 +36,7 @@ export async function fetchTraderDetail(address: string): Promise<TraderDetail> 
 
   // Fetch all DEXes in parallel
   const results = await Promise.all(
-    DEXES.map((dex) => fetchClearinghouseForDex(address, dex)),
+    ACCOUNT_DEXES.map((dex) => fetchClearinghouseForDex(address, dex)),
   );
 
   // Aggregate positions and numeric totals across all DEXes
@@ -99,15 +72,9 @@ export async function fetchTraderFills(address: string): Promise<TraderFill[]> {
     return cached.data;
   }
 
-  const res = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "userFills", user: address }),
-  });
-
-  if (!res.ok) throw new Error(`User fills fetch failed: ${res.status}`);
-
-  const raw = (await res.json()) as {
+  // userFillsByTime returns recent fills; userFills caps at 2000 oldest
+  const startTime = Date.now() - FILLS_LOOKBACK_MS;
+  const raw = await hlInfoRequest<{
     coin: string;
     px: string;
     sz: string;
@@ -118,9 +85,9 @@ export async function fetchTraderFills(address: string): Promise<TraderFill[]> {
     hash: string;
     fee: string;
     crossed: boolean;
-  }[];
+  }[]>({ type: "userFillsByTime", user: address, startTime });
 
-  const fills: TraderFill[] = raw.slice(-100).reverse().map((f) => ({
+  const fills: TraderFill[] = raw.slice(-MAX_RECENT_FILLS).reverse().map((f) => ({
     coin: f.coin,
     px: f.px,
     sz: f.sz,

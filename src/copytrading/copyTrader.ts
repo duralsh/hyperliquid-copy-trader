@@ -118,11 +118,11 @@ export class CopyTrader extends EventEmitter {
             logger.warn(`Failed to fetch account equity (attempt ${attempt}/3)`, { error });
           }
         );
-      } catch (error) {
+      } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
         logger.error("Failed to fetch account equity after retries", formattedError);
         await sendErrorNotification(
-          ErrorHandler.wrapError(error as Error, "Failed to fetch account equity"),
+          ErrorHandler.wrapError(error, "Failed to fetch account equity"),
           { fillHash: fill.hash, coin: fill.coin }
         );
         return;
@@ -151,11 +151,11 @@ export class CopyTrader extends EventEmitter {
           },
           { maxRetries: 3, initialDelay: 1000, maxDelay: 10000, backoffMultiplier: 2 }
         );
-      } catch (error) {
+      } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
         logger.error("Failed to fetch positions after retries", formattedError);
         await sendErrorNotification(
-          ErrorHandler.wrapError(error as Error, "Failed to fetch positions"),
+          ErrorHandler.wrapError(error, "Failed to fetch positions"),
           { fillHash: fill.hash, coin: fill.coin }
         );
         return;
@@ -172,11 +172,11 @@ export class CopyTrader extends EventEmitter {
           targetEquity,
           targetPosition
         );
-      } catch (error) {
+      } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
         logger.error("Failed to calculate trade parameters", formattedError);
         await sendErrorNotification(
-          ErrorHandler.wrapError(error as Error, "Failed to calculate trade parameters"),
+          ErrorHandler.wrapError(error, "Failed to calculate trade parameters"),
           { fillHash: fill.hash, coin: fill.coin }
         );
         return;
@@ -255,7 +255,7 @@ export class CopyTrader extends EventEmitter {
                 ).length,
               });
             }
-          } catch (error) {
+          } catch (error: unknown) {
             logger.warn("Failed to fetch our PnL, falling back to target's", {
               coin: fill.coin,
               error: ErrorHandler.formatError(error),
@@ -280,7 +280,7 @@ export class CopyTrader extends EventEmitter {
           {}
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Error handling fill", { fill, ...formattedError });
       this.emit("error", { error: formattedError.message, fill, timestamp: Date.now() });
@@ -302,61 +302,51 @@ export class CopyTrader extends EventEmitter {
     targetPosition: Position | undefined
   ): Promise<CopyTradeParams | null> {
     const coin = fill.coin;
-    const fillSize = parseFloat(fill.sz);
 
-    let side: "A" | "B";
-    let reduceOnly = false;
-
-    if (action === "open") {
-      side = fill.dir === "Open Long" ? "B" : "A";
-    } else {
-      if (targetPosition) {
-        const isLong = parseFloat(targetPosition.szi) > 0;
-        side = isLong ? "A" : "B";
-      } else {
-        side = fill.side;
-      }
-      reduceOnly = true;
-    }
-
-    const targetSize = fillSize;
-    const calculatedSize = calculatePositionSize(targetSize, ourEquity, targetEquity);
-
-    let leverage = 1;
-    if (targetPosition?.leverage) {
-      leverage = parseInt(targetPosition.leverage.value, 10);
-      leverage = capLeverage(leverage);
-    }
-
-    if (
-      action === "open" &&
-      this.activeTrades.size >= copyTradingConfig.MAX_CONCURRENT_TRADES
-    ) {
+    // Guard: check concurrent trade limit early
+    if (action === "open" && this.activeTrades.size >= copyTradingConfig.MAX_CONCURRENT_TRADES) {
       logger.warn("Max concurrent trades reached, skipping", {
         activeTrades: this.activeTrades.size,
         max: copyTradingConfig.MAX_CONCURRENT_TRADES,
-        coin: fill.coin,
+        coin,
       });
       return null;
     }
+
+    const fillSize = parseFloat(fill.sz);
+    const reduceOnly = action !== "open";
+
+    let side: "A" | "B";
+    if (action === "open") {
+      side = fill.dir === "Open Long" ? "B" : "A";
+    } else if (targetPosition) {
+      const isLong = parseFloat(targetPosition.szi) > 0;
+      side = isLong ? "A" : "B";
+    } else {
+      side = fill.side;
+    }
+
+    const calculatedSize = calculatePositionSize(fillSize, ourEquity, targetEquity);
 
     if (calculatedSize <= 0 || isNaN(calculatedSize) || !isFinite(calculatedSize)) {
       logger.error("Invalid calculated position size", {
         calculatedSize,
-        targetSize,
+        targetSize: fillSize,
         ourEquity,
         targetEquity,
-        coin: fill.coin,
+        coin,
       });
       return null;
     }
 
-    const sizeStr = removeTrailingZeros(calculatedSize.toFixed(8));
+    const leverage = targetPosition?.leverage
+      ? capLeverage(parseInt(targetPosition.leverage.value, 10))
+      : 1;
 
     return {
       coin,
       side,
-      size: sizeStr,
+      size: removeTrailingZeros(calculatedSize.toFixed(8)),
       orderType: "Market",
       reduceOnly,
       leverage,
@@ -414,7 +404,7 @@ export class CopyTrader extends EventEmitter {
         orderId,
         params,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Trade execution failed after retries", { ...formattedError });
 
@@ -438,7 +428,4 @@ export class CopyTrader extends EventEmitter {
     }
   }
 
-  getActiveTradesCount(): number {
-    return this.activeTrades.size;
-  }
 }

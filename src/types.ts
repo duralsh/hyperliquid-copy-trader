@@ -87,12 +87,6 @@ export interface CancelOrderRequest {
   cancels: CancelOrder[];
 }
 
-export interface ModifyOrderRequest {
-  provider: Provider;
-  oid: number;
-  order: BaseOrderParams;
-}
-
 export interface ClosePositionRequest {
   provider: Provider;
   symbol: string;

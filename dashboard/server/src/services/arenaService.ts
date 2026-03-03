@@ -1,52 +1,5 @@
 import type { ArenaPost, ArenaFeedResponse } from "../../../shared/types.js";
-
-/** Read lazily so dotenv has time to load (ESM hoists imports before dotenv.config()). */
-function getArenaBaseUrl(): string {
-  return (process.env.ARENA_BASE_URL ?? "https://api.starsarena.com").replace(/\/$/, "");
-}
-
-function getApiKey(): string {
-  const key = process.env.ARENA_API_KEY ?? "";
-  if (!key) {
-    throw new Error("ARENA_API_KEY is not configured in environment");
-  }
-  return key;
-}
-
-function buildHeaders(): Record<string, string> {
-  return {
-    "Content-Type": "application/json",
-    "x-api-key": getApiKey(),
-  };
-}
-
-async function arenaRequest<T>(
-  method: string,
-  path: string,
-  body?: unknown
-): Promise<T> {
-  const url = `${getArenaBaseUrl()}${path}`;
-  const init: RequestInit = {
-    method,
-    headers: buildHeaders(),
-  };
-  if (body !== undefined) {
-    init.body = JSON.stringify(body);
-  }
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`Arena API error ${response.status}: ${text || response.statusText}`);
-  }
-  if (response.status === 204) {
-    return undefined as unknown as T;
-  }
-  const text = await response.text();
-  if (!text.trim()) {
-    return undefined as unknown as T;
-  }
-  return JSON.parse(text) as T;
-}
+import { arenaRequest } from "./arenaClient.js";
 
 export async function fetchMyFeed(page = 1, pageSize = 20): Promise<ArenaFeedResponse> {
   const data = await arenaRequest<{ threads?: ArenaPost[] }>(

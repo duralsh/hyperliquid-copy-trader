@@ -45,18 +45,12 @@ function passSizeCheck(trader: TraderSummary, userEquity: number): boolean {
 
 /** Pass 2: Activity — is the trader actively trading? */
 function passActivity(trader: TraderSummary): boolean {
-  // Must have meaningful recent volume
-  if (trader.volume.week < MIN_VOLUME_WEEK) return false;
-  // Must have traded today (non-zero daily volume)
-  if (trader.volume.day <= 0) return false;
-  return true;
+  return trader.volume.week >= MIN_VOLUME_WEEK && trader.volume.day > 0;
 }
 
 /** Pass 3: Performance — is the trader profitable? */
 function passPerformance(trader: TraderSummary): boolean {
-  if (trader.pnl.month <= MIN_PNL_MONTH) return false;
-  if (trader.roi.month <= MIN_ROI_MONTH) return false;
-  return true;
+  return trader.pnl.month > MIN_PNL_MONTH && trader.roi.month > MIN_ROI_MONTH;
 }
 
 /** Build result for an eligible trader. */

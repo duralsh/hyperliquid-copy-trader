@@ -1,11 +1,12 @@
 import type { TokenPrice } from "../../../shared/types.js";
-
-const HL_INFO_URL = "https://api-ui.hyperliquid.xyz/info";
+import { hlInfoRequest } from "./hlClient.js";
 
 const TRACKED_COINS = [
   "BTC", "ETH", "SOL", "DOGE", "AVAX", "LINK",
   "SUI", "HYPE", "ARB", "MATIC", "OP", "PEPE", "WIF",
 ];
+
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
 /**
  * Maps display names → Hyperliquid allMids ticker names.
@@ -67,7 +68,7 @@ async function fetchIconUrls(): Promise<Record<string, string>> {
     iconCache = newCache;
     iconCacheAt = now;
     return iconCache;
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Failed to fetch CoinGecko icons:", err);
     return iconCache;
   }
@@ -79,15 +80,7 @@ let cachedPrices: TokenPrice[] | null = null;
 let cachedAt = 0;
 
 async function fetchAllMids(): Promise<Record<string, string>> {
-  const res = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "allMids" }),
-  });
-  if (!res.ok) {
-    throw new Error(`allMids request failed: ${res.status}`);
-  }
-  const raw = (await res.json()) as Record<string, string>;
+  const raw = await hlInfoRequest<Record<string, string>>({ type: "allMids" });
 
   // Build a reverse alias map: HL ticker → display name (e.g. "kPEPE" → "PEPE")
   const reverseAlias: Record<string, string> = {};
@@ -115,17 +108,11 @@ async function fetchXyzMids(): Promise<{
   xyzCoinMap: Record<string, string>;
 }> {
   try {
-    const res = await fetch(HL_INFO_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }),
-    });
-    if (!res.ok) {
-      return { mids: {}, xyzCoinMap: {} };
-    }
-    const meta = (await res.json()) as any[];
-    const universe = meta[0]?.universe || [];
-    const assetCtxs = meta[1] || [];
+    interface XyzMarket { name?: string }
+    interface XyzAssetCtx { midPx?: string; markPx?: string }
+    const meta = await hlInfoRequest<[{ universe?: XyzMarket[] }, XyzAssetCtx[]]>({ type: "metaAndAssetCtxs", dex: "xyz" });
+    const universe = meta[0]?.universe ?? [];
+    const assetCtxs = meta[1] ?? [];
 
     const mids: Record<string, string> = {};
     const xyzCoinMap: Record<string, string> = {};
@@ -146,7 +133,7 @@ async function fetchXyzMids(): Promise<{
       }
     }
     return { mids, xyzCoinMap };
-  } catch (err) {
+  } catch (err: unknown) {
     console.warn("Failed to fetch xyz DEX mids:", err);
     return { mids: {}, xyzCoinMap: {} };
   }
@@ -168,29 +155,21 @@ interface Candle {
  */
 async function fetchCandle2hAgo(coin: string, candleCoinOverride?: string): Promise<number | null> {
   const now = Date.now();
-  const twoHoursAgo = now - 2 * 60 * 60 * 1000;
+  const twoHoursAgo = now - TWO_HOURS_MS;
 
   // Use override if provided (for xyz markets), otherwise apply alias mapping for perps.
   const candleCoin = candleCoinOverride ?? HL_TICKER_ALIASES[coin] ?? coin;
 
   try {
-    const res = await fetch(HL_INFO_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "candleSnapshot",
-        req: {
-          coin: candleCoin,
-          interval: "1h",
-          startTime: twoHoursAgo,
-          endTime: now,
-        },
-      }),
+    const candles = await hlInfoRequest<Candle[]>({
+      type: "candleSnapshot",
+      req: {
+        coin: candleCoin,
+        interval: "1h",
+        startTime: twoHoursAgo,
+        endTime: now,
+      },
     });
-
-    if (!res.ok) return null;
-
-    const candles = (await res.json()) as Candle[];
     if (!candles || candles.length === 0) return null;
 
     return parseFloat(candles[0].c);

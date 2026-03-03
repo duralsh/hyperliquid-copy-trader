@@ -16,12 +16,14 @@ import {
   NetworkError,
   WebSocketError,
   ErrorHandler,
-  retryWithBackoff,
 } from "./utils/errors.js";
 import type { AccountEquity, Position, FillEvent } from "./types.js";
 import type WsWebSocket from "ws";
 
 const WS_URL = "wss://api.hyperliquid.xyz/ws";
+const WS_PING_INTERVAL_MS = 50_000;
+const WS_MAX_RECONNECT_ATTEMPTS = 10;
+const WS_OPEN = 1; // WebSocket.OPEN readyState
 
 export class HyperliquidClientWrapper {
   private readonly ourAddress: string;
@@ -65,7 +67,7 @@ export class HyperliquidClientWrapper {
         crossMaintenanceMarginUsed: ms.crossMaintenanceMarginUsed ?? "0",
         crossMarginSummary: (ms.crossMarginSummary as Record<string, unknown>) ?? {},
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to get account equity", { address, ...formattedError });
       if (error instanceof SDKError) throw error;
@@ -88,7 +90,7 @@ export class HyperliquidClientWrapper {
       }
       const rawFills = (await response.json()) as Record<string, unknown>[];
       return rawFills.map((raw) => this.normalizeFill(raw));
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to get user fills", { address, ...formattedError });
       if (error instanceof SDKError) throw error;
@@ -119,7 +121,7 @@ export class HyperliquidClientWrapper {
         });
       }
       return positions;
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to get positions", { address, ...formattedError });
       if (error instanceof SDKError) throw error;
@@ -212,7 +214,7 @@ export class HyperliquidClientWrapper {
       loggerUtils.logPerformance("placeOrder", duration, { coin: params.coin });
 
       return String(oid);
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to place order", { params, ...formattedError });
       if (error instanceof TradingError || error instanceof SDKError) throw error;
@@ -295,7 +297,7 @@ export class HyperliquidClientWrapper {
               subscription: { type: "userFills", user: address },
             })
           );
-        } catch (error) {
+        } catch (error: unknown) {
           logger.error("Failed to send WebSocket subscription", {
             error: ErrorHandler.formatError(error),
             address,
@@ -304,17 +306,17 @@ export class HyperliquidClientWrapper {
 
         // Start ping interval to prevent 60s idle timeout
         this.pingInterval = setInterval(() => {
-          if (this.ws?.readyState === 1) { // 1 = WebSocket.OPEN
+          if (this.ws?.readyState === WS_OPEN) {
             try {
               this.ws.send(JSON.stringify({ method: "ping" }));
               logger.debug("WebSocket ping sent");
-            } catch (error) {
+            } catch (error: unknown) {
               logger.error("Failed to send WebSocket ping", {
                 error: ErrorHandler.formatError(error),
               });
             }
           }
-        }, 50000); // 50 seconds
+        }, WS_PING_INTERVAL_MS);
       });
 
       this.ws.on("message", (data: string | { toString(): string }) => {
@@ -344,7 +346,7 @@ export class HyperliquidClientWrapper {
                 }
                 try {
                   onFill(fill);
-                } catch (error) {
+                } catch (error: unknown) {
                   logger.error("Error in fill callback", {
                     error: ErrorHandler.formatError(error),
                     fill,
@@ -353,7 +355,7 @@ export class HyperliquidClientWrapper {
               });
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           logger.error("Failed to parse WebSocket message", {
             error: ErrorHandler.formatError(error),
             data: typeof data === "string" ? data.substring(0, 200) : "Buffer",
@@ -396,14 +398,14 @@ export class HyperliquidClientWrapper {
             this.isConnected = false;
             loggerUtils.logWebSocket("close", "WebSocket unsubscribed", { address });
           }
-        } catch (error) {
+        } catch (error: unknown) {
           logger.error("Error unsubscribing WebSocket", {
             error: ErrorHandler.formatError(error),
             address,
           });
         }
       };
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to subscribe to user fills", { address, ...formattedError });
       if (error instanceof WebSocketError) throw error;
@@ -415,23 +417,22 @@ export class HyperliquidClientWrapper {
   }
 
   private reconnect(address: string, onFill: (fill: FillEvent) => void, attempt = 1): void {
-    const maxAttempts = 10;
-    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+    const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30_000);
 
-    if (attempt > maxAttempts) {
+    if (attempt > WS_MAX_RECONNECT_ATTEMPTS) {
       const error = new WebSocketError("Max reconnection attempts reached", {
         address,
-        attempts: maxAttempts,
+        attempts: WS_MAX_RECONNECT_ATTEMPTS,
       });
       logger.error("Max reconnection attempts reached", ErrorHandler.formatError(error));
       return;
     }
 
     setTimeout(async () => {
-      logger.info(`Reconnection attempt ${attempt}/${maxAttempts}`, { address });
+      logger.info(`Reconnection attempt ${attempt}/${WS_MAX_RECONNECT_ATTEMPTS}`, { address });
       try {
         await this.subscribeToUserFills(address, onFill);
-      } catch (error) {
+      } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
         logger.error("Reconnection failed", { attempt, ...formattedError, address });
         this.reconnect(address, onFill, attempt + 1);

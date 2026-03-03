@@ -175,6 +175,20 @@ export interface SmartFilterResponse {
   computedAt: number;
 }
 
+// Close position result types (shared between server and client)
+export interface CloseAllResult {
+  closed: { coin: string; side: string; size: string }[];
+  errors: { coin: string; error: string }[];
+}
+
+export interface ClosePositionResult {
+  success: boolean;
+  coin: string;
+  side?: string;
+  size?: string;
+  error?: string;
+}
+
 export interface TraderFill {
   coin: string;
   px: string;

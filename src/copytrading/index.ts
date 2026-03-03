@@ -44,11 +44,11 @@ async function main(): Promise<void> {
       logger.info("Account connected successfully", {
         accountValue: ourEquity.accountValue,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Failed to connect to account", formattedError);
       await sendErrorNotification(
-        ErrorHandler.wrapError(error as Error, "Cannot connect to Hyperliquid account"),
+        ErrorHandler.wrapError(error, "Cannot connect to Hyperliquid account"),
         { address: ourAddress }
       );
       throw error;
@@ -84,12 +84,12 @@ async function main(): Promise<void> {
     });
 
     logger.info("Bot is running. Press Ctrl+C to stop.");
-  } catch (error) {
+  } catch (error: unknown) {
     const formattedError = ErrorHandler.formatError(error);
     logger.error("Fatal error during startup", formattedError);
     try {
       await sendErrorNotification(
-        ErrorHandler.wrapError(error as Error, "Fatal error during startup"),
+        ErrorHandler.wrapError(error, "Fatal error during startup"),
         { phase: "startup" }
       );
     } catch (notifError) {

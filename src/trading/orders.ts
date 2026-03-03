@@ -7,7 +7,6 @@ import type {
   CancelOrderRequest,
   ClosePositionRequest,
   LeverageType,
-  ModifyOrderRequest,
   OrderDirection,
   OrderType,
   PlaceOrderRequest,
@@ -35,18 +34,6 @@ export interface PlaceOrderOptions {
 export interface CancelOrderOptions {
   assetIndex: number;
   oid: number;
-}
-
-export interface ModifyOrderOptions {
-  oid: number;
-  symbol: string;
-  direction: OrderDirection;
-  orderType: OrderType;
-  size: number;
-  marginAmount: number;
-  leverage: number;
-  leverageType?: LeverageType;
-  price: number;
 }
 
 export interface ClosePositionOptions {
@@ -158,40 +145,6 @@ export async function cancelOrders(
   };
 
   return arenaClient().post("/agents/perp/orders/cancel", body);
-}
-
-// ─── Modify Order ─────────────────────────────────────────────────────────────
-
-export async function modifyOrder(
-  options: ModifyOrderOptions
-): Promise<unknown> {
-  const pair = await getPair(options.symbol);
-  const leverageType = options.leverageType ?? "cross";
-  const roundedSize = roundSize(options.size, pair.sizePrecision);
-  const roundedPrice = roundPrice(options.price, pair);
-
-  const order: BaseOrderParams = {
-    provider: "HYPERLIQUID",
-    symbol: options.symbol,
-    direction: options.direction,
-    orderType: options.orderType,
-    leverageType,
-    size: roundedSize,
-    marginAmount: options.marginAmount,
-    assetId: String(pair.baseAssetId),
-    initialMarginAssetId: "USDC",
-    leverage: options.leverage,
-    price: roundedPrice,
-    ...(options.orderType === "limit" && { limitPrice: roundedPrice }),
-  };
-
-  const body: ModifyOrderRequest = {
-    provider: "HYPERLIQUID",
-    oid: options.oid,
-    order,
-  };
-
-  return arenaClient().post("/agents/perp/orders/modify", body);
 }
 
 // ─── Close Position ───────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LeaderboardTable } from "./components/Leaderboard/LeaderboardTable.js";
 import { TraderDetailPanel } from "./components/TraderDetail/TraderDetailPanel.js";
@@ -17,6 +17,14 @@ function Dashboard() {
   const [selectedTrader, setSelectedTrader] = useState<TraderSummary | null>(null);
   const [copyConfig, setCopyConfig] = useState<Partial<BotConfig> | null>(null);
   const [logVisible, setLogVisible] = useState(false);
+
+  const handleToggleLog = useCallback(() => setLogVisible((v) => !v), []);
+  const handleCloseTrader = useCallback(() => setSelectedTrader(null), []);
+  const handleCloseCopyConfig = useCallback(() => setCopyConfig(null), []);
+  const handleCopy = useCallback((config: Partial<BotConfig>) => {
+    setCopyConfig(config);
+    setSelectedTrader(null);
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-bg overflow-hidden">
@@ -58,7 +66,7 @@ function Dashboard() {
         </div>
 
         {/* Trade Log */}
-        <TradeLog trades={trades} visible={logVisible} onToggle={() => setLogVisible((v) => !v)} />
+        <TradeLog trades={trades} visible={logVisible} onToggle={handleToggleLog} />
       </div>
 
       {/* Status bar */}
@@ -69,15 +77,12 @@ function Dashboard() {
         <>
           <div
             className="fixed inset-0 z-40"
-            onClick={() => setSelectedTrader(null)}
+            onClick={handleCloseTrader}
           />
           <TraderDetailPanel
             trader={selectedTrader}
-            onClose={() => setSelectedTrader(null)}
-            onCopy={(config) => {
-              setCopyConfig(config);
-              setSelectedTrader(null);
-            }}
+            onClose={handleCloseTrader}
+            onCopy={handleCopy}
           />
         </>
       )}
@@ -86,7 +91,7 @@ function Dashboard() {
       {copyConfig && (
         <CopyTraderForm
           initialConfig={copyConfig}
-          onClose={() => setCopyConfig(null)}
+          onClose={handleCloseCopyConfig}
         />
       )}
     </div>

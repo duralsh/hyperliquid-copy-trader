@@ -1,6 +1,6 @@
 import { arenaClient } from "../client/arenaClient.js";
 import { getPair } from "./marketData.js";
-import { roundSize, roundPrice, applySlippage } from "../utils/precision.js";
+import { roundSize, roundPrice } from "../utils/precision.js";
 import type {
   BaseOrderParams,
   OrderDirection,
