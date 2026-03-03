@@ -16,6 +16,7 @@ import botRouter from "./routes/bot.js";
 import accountRouter from "./routes/account.js";
 import arenaRouter from "./routes/arena.js";
 import pricesRouter from "./routes/prices.js";
+import smartFilterRouter from "./routes/smartFilter.js";
 import { botManager } from "./services/botManager.js";
 const PORT = parseInt(process.env.DASHBOARD_PORT ?? "3001", 10);
 
@@ -30,6 +31,7 @@ app.use("/api/bot", botRouter);
 app.use("/api/account", accountRouter);
 app.use("/api/arena", arenaRouter);
 app.use("/api/prices", pricesRouter);
+app.use("/api/smart-filter", smartFilterRouter);
 
 // Serve static client build in production
 const clientDist = path.resolve(__dirname, "../../client/dist");

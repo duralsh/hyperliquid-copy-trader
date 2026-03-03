@@ -42,7 +42,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
       >
         <div className="p-4 border-b border-border">
           <div className="text-green text-sm">
-            {">"} configure_copy_bot <span className="cursor-blink">█</span>
+            {">"} configure_copy_bot<span className="cursor-blink">█</span>
           </div>
         </div>
 

@@ -4,8 +4,17 @@ const HL_INFO_URL = "https://api-ui.hyperliquid.xyz/info";
 
 const TRACKED_COINS = [
   "BTC", "ETH", "SOL", "DOGE", "AVAX", "LINK",
-  "SUI", "HYPE", "ARB", "MATIC", "OP", "PEPE", "WIF", "XYZ",
+  "SUI", "HYPE", "ARB", "MATIC", "OP", "PEPE", "WIF",
 ];
+
+/**
+ * Maps display names → Hyperliquid allMids ticker names.
+ * Some coins are listed under different symbols on Hyperliquid (e.g. PEPE → kPEPE).
+ * If a display name is NOT in this map the display name itself is used as-is.
+ */
+const HL_TICKER_ALIASES: Record<string, string> = {
+  PEPE: "kPEPE",
+};
 
 // CoinGecko ID mapping for icon lookups
 const COINGECKO_IDS: Record<string, string> = {
@@ -22,7 +31,6 @@ const COINGECKO_IDS: Record<string, string> = {
   OP: "optimism",
   PEPE: "pepe",
   WIF: "dogwifcoin",
-  XYZ: "xyzverse",
 };
 
 // Icon cache — refreshed every 6 hours (icons never change)
@@ -79,10 +87,33 @@ async function fetchAllMids(): Promise<Record<string, string>> {
   if (!res.ok) {
     throw new Error(`allMids request failed: ${res.status}`);
   }
-  return res.json() as Promise<Record<string, string>>;
+  const raw = (await res.json()) as Record<string, string>;
+
+  // Build a reverse alias map: HL ticker → display name (e.g. "kPEPE" → "PEPE")
+  const reverseAlias: Record<string, string> = {};
+  for (const [display, hlTicker] of Object.entries(HL_TICKER_ALIASES)) {
+    reverseAlias[hlTicker] = display;
+  }
+
+  // Re-key aliased entries so downstream code can look up by display name
+  for (const [hlTicker, display] of Object.entries(reverseAlias)) {
+    if (hlTicker in raw) {
+      raw[display] = raw[hlTicker];
+    }
+  }
+
+  return raw;
 }
 
-async function fetchXyzMids(): Promise<Record<string, string>> {
+/**
+ * Fetches ALL available xyz DEX markets (stocks, commodities, indices, etc.).
+ * Returns a map of display name → price string.
+ * Also returns a parallel map of display name → full xyz coin identifier for candle lookups.
+ */
+async function fetchXyzMids(): Promise<{
+  mids: Record<string, string>;
+  xyzCoinMap: Record<string, string>;
+}> {
   try {
     const res = await fetch(HL_INFO_URL, {
       method: "POST",
@@ -90,26 +121,34 @@ async function fetchXyzMids(): Promise<Record<string, string>> {
       body: JSON.stringify({ type: "metaAndAssetCtxs", dex: "xyz" }),
     });
     if (!res.ok) {
-      return {};
+      return { mids: {}, xyzCoinMap: {} };
     }
     const meta = (await res.json()) as any[];
     const universe = meta[0]?.universe || [];
     const assetCtxs = meta[1] || [];
 
     const mids: Record<string, string> = {};
+    const xyzCoinMap: Record<string, string> = {};
+
     for (let i = 0; i < universe.length; i++) {
       const market = universe[i];
       const assetCtx = assetCtxs[i];
       if (market?.name && assetCtx) {
-        // Extract the symbol without "xyz:" prefix for matching
-        const symbol = market.name.replace(/^xyz:/, "");
-        const price = assetCtx.midPx || assetCtx.markPx || "0";
-        mids[symbol] = price;
+        const price = assetCtx.midPx || assetCtx.markPx;
+        // Skip markets with no price (None / null)
+        if (!price || price === "None") continue;
+
+        // market.name is like "xyz:AAPL" — strip the prefix for display
+        const displayName = market.name.replace(/^xyz:/, "");
+        mids[displayName] = price;
+        // Store the full identifier for candle lookups (e.g. "xyz:AAPL")
+        xyzCoinMap[displayName] = market.name;
       }
     }
-    return mids;
-  } catch {
-    return {};
+    return { mids, xyzCoinMap };
+  } catch (err) {
+    console.warn("Failed to fetch xyz DEX mids:", err);
+    return { mids: {}, xyzCoinMap: {} };
   }
 }
 
@@ -122,30 +161,42 @@ interface Candle {
   v: string;
 }
 
-async function fetchCandle2hAgo(coin: string): Promise<number | null> {
+/**
+ * Fetches the closing price from ~2 hours ago.
+ * @param coin - display name (e.g. "BTC", "PEPE")
+ * @param candleCoinOverride - optional full coin identifier for the candle API (e.g. "xyz:AAPL")
+ */
+async function fetchCandle2hAgo(coin: string, candleCoinOverride?: string): Promise<number | null> {
   const now = Date.now();
   const twoHoursAgo = now - 2 * 60 * 60 * 1000;
 
-  const res = await fetch(HL_INFO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      type: "candleSnapshot",
-      req: {
-        coin,
-        interval: "1h",
-        startTime: twoHoursAgo,
-        endTime: now,
-      },
-    }),
-  });
+  // Use override if provided (for xyz markets), otherwise apply alias mapping for perps.
+  const candleCoin = candleCoinOverride ?? HL_TICKER_ALIASES[coin] ?? coin;
 
-  if (!res.ok) return null;
+  try {
+    const res = await fetch(HL_INFO_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "candleSnapshot",
+        req: {
+          coin: candleCoin,
+          interval: "1h",
+          startTime: twoHoursAgo,
+          endTime: now,
+        },
+      }),
+    });
 
-  const candles = (await res.json()) as Candle[];
-  if (!candles || candles.length === 0) return null;
+    if (!res.ok) return null;
 
-  return parseFloat(candles[0].c);
+    const candles = (await res.json()) as Candle[];
+    if (!candles || candles.length === 0) return null;
+
+    return parseFloat(candles[0].c);
+  } catch {
+    return null;
+  }
 }
 
 export async function getTokenPrices(): Promise<TokenPrice[]> {
@@ -154,25 +205,27 @@ export async function getTokenPrices(): Promise<TokenPrice[]> {
     return cachedPrices;
   }
 
-  // Fetch prices and icons in parallel
-  const [mids, xyzMids, icons, ...candleResults] = await Promise.all([
+  // Fetch standard mids, all xyz DEX markets, and icons in parallel
+  const [mids, xyzData, icons] = await Promise.all([
     fetchAllMids(),
     fetchXyzMids(),
     fetchIconUrls(),
-    ...TRACKED_COINS.map(async (coin) => {
+  ]);
+
+  const { mids: xyzMids, xyzCoinMap } = xyzData;
+
+  // --- Standard tracked coins (with candle lookups) ---
+  const standardCandleResults = await Promise.all(
+    TRACKED_COINS.map(async (coin) => {
       const price2hAgo = await fetchCandle2hAgo(coin);
       return { coin, price2hAgo };
     }),
-  ]);
-
-  // Merge standard and XYZ mids
-  const allMids = { ...mids, ...xyzMids };
+  );
 
   const prices: TokenPrice[] = [];
 
-  for (const result of candleResults) {
-    const { coin, price2hAgo } = result;
-    const midStr = allMids[coin];
+  for (const { coin, price2hAgo } of standardCandleResults) {
+    const midStr = mids[coin];
     if (!midStr) continue;
 
     const currentPrice = parseFloat(midStr);
@@ -188,6 +241,36 @@ export async function getTokenPrices(): Promise<TokenPrice[]> {
       price: currentPrice,
       change2h,
       iconUrl: icons[coin] ?? null,
+    });
+  }
+
+  // --- All xyz DEX markets (stocks, commodities, indices, etc.) ---
+  const xyzDisplayNames = Object.keys(xyzMids);
+  const xyzCandleResults = await Promise.all(
+    xyzDisplayNames.map(async (displayName) => {
+      const fullCoin = xyzCoinMap[displayName]; // e.g. "xyz:AAPL"
+      const price2hAgo = await fetchCandle2hAgo(displayName, fullCoin);
+      return { displayName, price2hAgo };
+    }),
+  );
+
+  for (const { displayName, price2hAgo } of xyzCandleResults) {
+    const midStr = xyzMids[displayName];
+    if (!midStr) continue;
+
+    const currentPrice = parseFloat(midStr);
+    if (isNaN(currentPrice)) continue;
+
+    let change2h = 0;
+    if (price2hAgo && price2hAgo > 0) {
+      change2h = ((currentPrice - price2hAgo) / price2hAgo) * 100;
+    }
+
+    prices.push({
+      coin: displayName,
+      price: currentPrice,
+      change2h,
+      iconUrl: null, // CoinGecko doesn't have stocks/commodities
     });
   }
 

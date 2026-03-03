@@ -148,7 +148,7 @@ body {
   flex-shrink: 0;
   align-items: center;
   gap: 24px;
-  animation: ticker-scroll 40s linear infinite;
+  animation: ticker-scroll 120s linear infinite;
   font-size: 0.75rem;
   will-change: transform;
 }

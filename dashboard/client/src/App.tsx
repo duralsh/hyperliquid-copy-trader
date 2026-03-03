@@ -46,8 +46,11 @@ function Dashboard() {
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="flex-1 overflow-hidden flex dashboard-layout">
           {/* Left: Leaderboard */}
-          <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-            <LeaderboardTable onSelectTrader={setSelectedTrader} />
+          <main className="flex-1 overflow-hidden flex flex-col min-w-0 relative z-[45]">
+            <LeaderboardTable
+              onSelectTrader={setSelectedTrader}
+              selectedAddress={selectedTrader?.address}
+            />
           </main>
 
           {/* Right: Sidebar */}
@@ -63,14 +66,20 @@ function Dashboard() {
 
       {/* Slide-out panels */}
       {selectedTrader && (
-        <TraderDetailPanel
-          trader={selectedTrader}
-          onClose={() => setSelectedTrader(null)}
-          onCopy={(config) => {
-            setCopyConfig(config);
-            setSelectedTrader(null);
-          }}
-        />
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setSelectedTrader(null)}
+          />
+          <TraderDetailPanel
+            trader={selectedTrader}
+            onClose={() => setSelectedTrader(null)}
+            onCopy={(config) => {
+              setCopyConfig(config);
+              setSelectedTrader(null);
+            }}
+          />
+        </>
       )}
 
       {/* Copy trader modal */}

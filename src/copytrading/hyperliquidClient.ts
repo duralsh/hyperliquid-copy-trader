@@ -76,6 +76,29 @@ export class HyperliquidClientWrapper {
     }
   }
 
+  async getUserFills(address: string): Promise<FillEvent[]> {
+    try {
+      const response = await fetch("https://api-ui.hyperliquid.xyz/info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "userFills", user: address }),
+      });
+      if (!response.ok) {
+        throw new Error(`Hyperliquid userFills API error ${response.status}`);
+      }
+      const rawFills = (await response.json()) as Record<string, unknown>[];
+      return rawFills.map((raw) => this.normalizeFill(raw));
+    } catch (error) {
+      const formattedError = ErrorHandler.formatError(error);
+      logger.error("Failed to get user fills", { address, ...formattedError });
+      if (error instanceof SDKError) throw error;
+      throw new NetworkError("Failed to fetch user fills", {
+        address,
+        originalError: formattedError.message,
+      });
+    }
+  }
+
   async getPositions(address: string): Promise<Position[]> {
     try {
       const state = await hyperliquidClient().getClearinghouseState(address);

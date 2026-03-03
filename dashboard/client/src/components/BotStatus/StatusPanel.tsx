@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useStopBot } from "../../hooks/useBotStatus.js";
 import { shortenAddress, formatElapsed } from "../../utils/format.js";
+import { CopyButton } from "../CopyButton.js";
 import type { BotStatus } from "../../../../shared/types.js";
 
 interface Props {
@@ -31,8 +32,7 @@ export function StatusPanel({ status, wsConnected }: Props) {
       <div className="flex items-center gap-2">
         <span className={`inline-block w-2 h-2 rounded-full ${running ? "bg-green animate-pulse" : "bg-text-dim"}`} />
         <span className={running ? "text-green" : "text-text-dim"}>
-          {">"} {running ? "bot running..." : "bot stopped"}
-          <span className="cursor-blink">█</span>
+          {">"} {running ? "bot running" : "bot stopped"}<span className="cursor-blink">█</span>
         </span>
       </div>
 
@@ -40,7 +40,7 @@ export function StatusPanel({ status, wsConnected }: Props) {
       {running && status && (
         <>
           <div className="text-text-dim">
-            target: <span className="text-amber">{shortenAddress(status.targetWallet ?? "")}</span>
+            target: <span className="text-amber inline-flex items-center gap-1">{shortenAddress(status.targetWallet ?? "")}<CopyButton text={status.targetWallet ?? ""} /></span>
           </div>
           <div className="text-text-dim">
             trades: <span className="text-text">{status.activeTradesCount}</span>

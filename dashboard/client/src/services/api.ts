@@ -1,5 +1,6 @@
 import type {
   TraderDetail,
+  TraderFill,
   BotStatus,
   BotConfig,
   BotTradeEvent,
@@ -8,6 +9,7 @@ import type {
   MyAccountData,
   ArenaFeedResponse,
   ArenaPost,
+  SmartFilterResponse,
 } from "../../../shared/types.js";
 
 const BASE = "/api";
@@ -37,6 +39,10 @@ export function fetchTraderPositions(address: string): Promise<TraderDetail> {
   return fetchJSON(`${BASE}/trader/${address}/positions`);
 }
 
+export function fetchTraderFills(address: string): Promise<TraderFill[]> {
+  return fetchJSON(`${BASE}/trader/${address}/fills`);
+}
+
 export function fetchBotStatus(): Promise<BotStatus> {
   return fetchJSON(`${BASE}/bot/status`);
 }
@@ -62,6 +68,31 @@ export function fetchMyAccount(): Promise<MyAccountData> {
   return fetchJSON(`${BASE}/account`);
 }
 
+export interface CloseAllResult {
+  closed: { coin: string; side: string; size: string }[];
+  errors: { coin: string; error: string }[];
+}
+
+export function closeAllPositions(): Promise<CloseAllResult> {
+  return fetchJSON(`${BASE}/account/close-all`, { method: "POST" });
+}
+
+export interface ClosePositionResult {
+  success: boolean;
+  coin: string;
+  side?: string;
+  size?: string;
+  error?: string;
+}
+
+export function closePosition(coin: string): Promise<ClosePositionResult> {
+  return fetchJSON(`${BASE}/account/close-position`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ coin }),
+  });
+}
+
 // Arena Feed
 export function fetchArenaFeed(page = 1, pageSize = 20): Promise<ArenaFeedResponse> {
   return fetchJSON(`${BASE}/arena/feed?page=${page}&pageSize=${pageSize}`);
@@ -79,4 +110,10 @@ export function deleteArenaPost(threadId: string): Promise<{ success: boolean }>
   return fetchJSON(`${BASE}/arena/post/${threadId}`, {
     method: "DELETE",
   });
+}
+
+// Smart Filter
+export function fetchSmartFilter(refresh = false): Promise<SmartFilterResponse> {
+  const params = refresh ? "?refresh=true" : "";
+  return fetchJSON(`${BASE}/smart-filter${params}`);
 }

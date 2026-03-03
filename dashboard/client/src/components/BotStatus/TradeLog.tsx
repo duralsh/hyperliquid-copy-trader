@@ -29,10 +29,9 @@ export function TradeLog({ trades, visible, onToggle }: Props) {
         className="w-full px-4 py-1.5 text-xs text-text-dim hover:text-text flex items-center gap-2 transition-colors"
       >
         <span>{visible ? "▼" : "▲"}</span>
-        <span>{">"} trade_log [{trades.length}]</span>
-        {trades.length > 0 && (
+        <span>{">"} trade_log [{trades.length}]{trades.length > 0 && (
           <span className="cursor-blink text-green">█</span>
-        )}
+        )}</span>
       </button>
 
       {/* Log entries */}

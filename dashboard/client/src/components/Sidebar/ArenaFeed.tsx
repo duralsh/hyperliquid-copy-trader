@@ -75,7 +75,7 @@ export function ArenaFeed() {
       <div className="flex-1 overflow-auto min-h-0">
         {isLoading && (
           <div className="text-green text-xs py-8 text-center">
-            <span className="cursor-blink">_</span> loading feed...
+            loading feed<span className="cursor-blink">_</span>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchTraderPositions } from "../../services/api.js";
-import { formatUSD, formatPnl, shortenAddress } from "../../utils/format.js";
+import { fetchTraderPositions, fetchTraderFills } from "../../services/api.js";
+import { formatUSD, formatPnl, shortenAddress, formatTimeAgo } from "../../utils/format.js";
+import { CopyButton } from "../CopyButton.js";
 import type { TraderSummary, BotConfig } from "../../../../shared/types.js";
 
 interface Props {
@@ -15,18 +16,26 @@ export function TraderDetailPanel({ trader, onClose, onCopy }: Props) {
     queryFn: () => fetchTraderPositions(trader.address),
   });
 
+  const { data: fills, isLoading: fillsLoading, error: fillsError } = useQuery({
+    queryKey: ["traderFills", trader.address],
+    queryFn: () => fetchTraderFills(trader.address),
+  });
+
   return (
     <div className="fixed inset-y-0 right-0 w-[500px] bg-bg-secondary border-l border-border shadow-2xl z-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div>
           <div className="text-green text-sm">
-            {">"} trader_detail <span className="cursor-blink">█</span>
+            {">"} trader_detail<span className="cursor-blink">█</span>
           </div>
-          <div className="text-amber text-lg mt-1">
+          <div className="text-amber text-lg mt-1 flex items-center gap-1.5">
             {trader.displayName || shortenAddress(trader.address)}
+            <CopyButton text={trader.address} />
           </div>
-          <div className="text-text-dim text-xs font-mono">{trader.address}</div>
+          <div className="text-text-dim text-xs font-mono flex items-center gap-1.5">
+            {trader.address}
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -64,6 +73,16 @@ export function TraderDetailPanel({ trader, onClose, onCopy }: Props) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Copy button */}
+      <div className="px-4 pt-4 pb-2">
+        <button
+          onClick={() => onCopy({ targetWallet: trader.address })}
+          className="w-full py-4 bg-green text-bg font-bold hover:bg-green/85 transition-colors text-sm rounded tracking-wider shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
+        >
+          {">"} COPY THIS TRADER _
+        </button>
       </div>
 
       {/* Positions */}
@@ -138,17 +157,66 @@ export function TraderDetailPanel({ trader, onClose, onCopy }: Props) {
             </div>
           );
         })}
+
+        {/* Recent Trades */}
+        <div className="text-text-dim text-xs mb-2 mt-4">
+          {">"} RECENT TRADES {fills ? `[${fills.length}]` : ""}
+        </div>
+
+        {fillsLoading && (
+          <div className="text-green text-xs py-4">Loading fills...</div>
+        )}
+
+        {fillsError && (
+          <div className="text-red text-xs py-4">ERR: {(fillsError as Error).message}</div>
+        )}
+
+        {fills && fills.length === 0 && (
+          <div className="text-text-dim text-xs py-4">No recent trades</div>
+        )}
+
+        {fills && fills.length > 0 && (
+          <div className="border border-border/50 rounded overflow-hidden">
+            {/* Table header */}
+            <div className="grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-1.5 text-[10px] text-text-dim border-b border-border/50 bg-bg/50">
+              <div>TIME</div>
+              <div>COIN</div>
+              <div>DIR</div>
+              <div>SIZE</div>
+              <div>PRICE</div>
+              <div>PNL</div>
+              <div>FEE</div>
+            </div>
+            {fills.map((fill, i) => {
+              const isBuy = fill.side === "B";
+              const closedPnl = parseFloat(fill.closedPnl);
+              const isClose = fill.dir.startsWith("Close");
+              const dirAbbr = fill.dir
+                .replace("Open ", "O/")
+                .replace("Close ", "C/");
+              const fee = parseFloat(fill.fee);
+
+              return (
+                <div
+                  key={fill.hash + i}
+                  className={`grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-1 text-[10px] ${i % 2 === 0 ? "bg-bg/30" : "bg-bg-secondary/50"}`}
+                >
+                  <div className="text-text-dim tabular-nums truncate">{formatTimeAgo(fill.time)}</div>
+                  <div className="text-amber tabular-nums">{fill.coin}</div>
+                  <div className={isBuy ? "text-green" : "text-red"}>{dirAbbr}</div>
+                  <div className="text-text tabular-nums">{parseFloat(fill.sz).toFixed(4)}</div>
+                  <div className="text-text tabular-nums">${parseFloat(fill.px).toFixed(2)}</div>
+                  <div className={`tabular-nums ${isClose ? (closedPnl >= 0 ? "text-green" : "text-red") : "text-text-dim"}`}>
+                    {isClose ? formatPnl(closedPnl) : "—"}
+                  </div>
+                  <div className="text-text-dim tabular-nums">${fee.toFixed(2)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Copy button */}
-      <div className="p-4 border-t border-border">
-        <button
-          onClick={() => onCopy({ targetWallet: trader.address })}
-          className="w-full py-3 bg-green/10 border border-green text-green hover:bg-green/20 transition-colors text-sm rounded"
-        >
-          {">"} COPY THIS TRADER
-        </button>
-      </div>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import type { ArenaPost, ArenaFeedResponse } from "../../../shared/types.js";
 
-const ARENA_BASE_URL = process.env.ARENA_BASE_URL ?? "https://api.starsarena.com";
+/** Read lazily so dotenv has time to load (ESM hoists imports before dotenv.config()). */
+function getArenaBaseUrl(): string {
+  return (process.env.ARENA_BASE_URL ?? "https://api.starsarena.com").replace(/\/$/, "");
+}
 
 function getApiKey(): string {
   const key = process.env.ARENA_API_KEY ?? "";
@@ -22,7 +25,7 @@ async function arenaRequest<T>(
   path: string,
   body?: unknown
 ): Promise<T> {
-  const url = `${ARENA_BASE_URL}${path}`;
+  const url = `${getArenaBaseUrl()}${path}`;
   const init: RequestInit = {
     method,
     headers: buildHeaders(),

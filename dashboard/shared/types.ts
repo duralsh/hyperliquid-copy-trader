@@ -150,3 +150,40 @@ export interface TokenPrice {
   change2h: number;
   iconUrl: string | null;
 }
+
+// Smart Filter types
+export interface SmartFilterTraderResult {
+  trader: TraderSummary;
+  equityRatio: number;     // userEquity / traderEquity
+  estCopySize: number;     // estimated position size when copying
+  roi30d: number;          // percentage
+  pnl30d: number;
+  volumeDaily: number;     // avg daily volume proxy
+}
+
+export interface SmartFilterStats {
+  total: number;
+  afterSize: number;
+  afterActivity: number;
+  afterPerformance: number;
+}
+
+export interface SmartFilterResponse {
+  eligible: SmartFilterTraderResult[];
+  stats: SmartFilterStats;
+  userEquity: number;
+  computedAt: number;
+}
+
+export interface TraderFill {
+  coin: string;
+  px: string;
+  sz: string;
+  side: "A" | "B";
+  time: number;
+  dir: "Open Long" | "Close Long" | "Open Short" | "Close Short";
+  closedPnl: string;
+  hash: string;
+  fee: string;
+  crossed: boolean;
+}

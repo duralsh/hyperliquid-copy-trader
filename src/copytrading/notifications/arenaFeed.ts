@@ -59,11 +59,12 @@ export async function initTelegramBot(): Promise<void> {
 export async function sendTradeNotification(
   fill: FillEvent,
   params: CopyTradeParams,
-  result: TradeResult
+  result: TradeResult,
+  ourClosedPnl?: string
 ): Promise<void> {
   if (!result.success) return;
   const action = params.reduceOnly ? "close" : "open";
-  
+
   // For opens: use order side. For closes: use fill direction to determine original position
   let sideText: string;
   if (action === "open") {
@@ -72,7 +73,7 @@ export async function sendTradeNotification(
     // For closes, extract from fill.dir: "Close Long" or "Close Short"
     sideText = fill.dir.includes("Long") ? "Long" : "Short";
   }
-  
+
   const price = parseFloat(fill.px);
   const size = params.size;
   const notional = price * parseFloat(size);
@@ -86,7 +87,9 @@ export async function sendTradeNotification(
       `Type: ${orderType}`
     );
   } else {
-    const pnl = fill.closedPnl ? parseFloat(fill.closedPnl) : 0;
+    // Use our own wallet's closedPnl if available, otherwise fall back to fill's closedPnl
+    const pnlSource = ourClosedPnl ?? fill.closedPnl;
+    const pnl = pnlSource ? parseFloat(pnlSource) : 0;
     const pnlSign = pnl >= 0 ? "+" : "";
     const pnlEmoji = pnl >= 0 ? "🟢" : "🔴";
     post(
