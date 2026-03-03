@@ -281,9 +281,10 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
 interface MyAccountProps {
   botStatus: BotStatus | null;
   onViewTrader: (address: string) => void;
+  isSwitching?: boolean;
 }
 
-export function MyAccount({ botStatus, onViewTrader }: MyAccountProps) {
+export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountProps) {
   const { data, isLoading, error } = useMyAccount();
   const queryClient = useQueryClient();
 
@@ -401,7 +402,12 @@ export function MyAccount({ botStatus, onViewTrader }: MyAccountProps) {
             {/* Currently following */}
             <div className="flex items-center justify-between">
               <span className="text-text-dim text-xs uppercase tracking-wider">Following</span>
-              {botStatus?.running && botStatus.targetWallet ? (
+              {isSwitching ? (
+                <span className="text-amber text-xs flex items-center gap-1 animate-pulse">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                  switching...
+                </span>
+              ) : botStatus?.running && botStatus.targetWallet ? (
                 <button
                   onClick={() => onViewTrader(botStatus.targetWallet!)}
                   className="text-green text-xs flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"

@@ -5,9 +5,24 @@ import type { BotConfig } from "../../../../shared/types.js";
 interface Props {
   initialConfig: Partial<BotConfig>;
   onClose: () => void;
+  isBotRunning?: boolean;
 }
 
-export function CopyTraderForm({ initialConfig, onClose }: Props) {
+function Label({ text, hint }: { text: string; hint: string }) {
+  return (
+    <label className="flex items-center gap-1.5 text-text-dim text-xs mb-1 group/label">
+      {text}
+      <span
+        title={hint}
+        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-text-dim/40 text-[9px] text-text-dim cursor-help hover:border-amber hover:text-amber transition-colors"
+      >
+        ?
+      </span>
+    </label>
+  );
+}
+
+export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) {
   const [targetWallet, setTargetWallet] = useState(initialConfig.targetWallet ?? "");
   const [sizeMultiplier, setSizeMultiplier] = useState(String(initialConfig.sizeMultiplier ?? 1.0));
   const [maxLeverage, setMaxLeverage] = useState(String(initialConfig.maxLeverage ?? 20));
@@ -48,7 +63,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-text-dim text-xs mb-1">TARGET_WALLET</label>
+            <Label text="TARGET_WALLET" hint="The wallet address to copy trade. All new positions opened by this trader will be mirrored on your account." />
             <input
               type="text"
               value={targetWallet}
@@ -61,7 +76,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-text-dim text-xs mb-1">SIZE_MULTIPLIER</label>
+              <Label text="SIZE_MULTIPLIER" hint="Scales the copied position size relative to the target. 1.0 = same size, 0.5 = half size, 2.0 = double. Adjust based on your account size vs theirs." />
               <input
                 type="number"
                 step="0.1"
@@ -71,7 +86,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
               />
             </div>
             <div>
-              <label className="block text-text-dim text-xs mb-1">MAX_LEVERAGE</label>
+              <Label text="MAX_LEVERAGE" hint="Upper limit on leverage for copied positions. If the target opens a 50x position and your max is 20, it will be capped at 20x." />
               <input
                 type="number"
                 value={maxLeverage}
@@ -82,7 +97,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-text-dim text-xs mb-1">MAX_POSITION_SIZE_PERCENT</label>
+            <Label text="MAX_POSITION_SIZE_PERCENT" hint="Maximum percentage of your account value that a single copied position can use. 50 = no single position can exceed 50% of your equity. Prevents overconcentration." />
             <input
               type="number"
               value={maxPositionSizePercent}
@@ -92,7 +107,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
           </div>
 
           <div>
-            <label className="block text-text-dim text-xs mb-1">BLOCKED_ASSETS (comma separated)</label>
+            <Label text="BLOCKED_ASSETS" hint="Comma-separated list of coins to ignore. The bot will skip any trades the target makes in these assets. Useful to avoid volatile memecoins." />
             <input
               type="text"
               value={blockedAssets}
@@ -110,9 +125,7 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
               onChange={(e) => setDryRun(e.target.checked)}
               className="accent-green"
             />
-            <label htmlFor="dryRun" className="text-text-dim text-xs">
-              DRY_RUN (simulate trades without executing)
-            </label>
+            <Label text="DRY_RUN" hint="When enabled, the bot logs all trade decisions but does not execute any orders. Use this to test your configuration safely before going live." />
           </div>
 
           {startBot.error && (
@@ -127,7 +140,13 @@ export function CopyTraderForm({ initialConfig, onClose }: Props) {
               disabled={startBot.isPending || !targetWallet}
               className="flex-1 py-2 bg-green/10 border border-green text-green hover:bg-green/20 transition-colors text-sm rounded disabled:opacity-50"
             >
-              {startBot.isPending ? "> starting..." : "> START BOT"}
+              {startBot.isPending
+                ? isBotRunning
+                  ? "> switching... closing positions..."
+                  : "> starting..."
+                : isBotRunning
+                  ? "> SWITCH BOT"
+                  : "> START BOT"}
             </button>
             <button
               type="button"

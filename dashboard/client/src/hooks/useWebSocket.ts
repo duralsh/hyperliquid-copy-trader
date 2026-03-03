@@ -13,6 +13,7 @@ export function useWebSocket() {
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
   const [trades, setTrades] = useState<BotTradeEvent[]>([]);
   const [dockerLogs, setDockerLogs] = useState<DockerLogEntry[]>([]);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -30,6 +31,9 @@ export function useWebSocket() {
         const msg = JSON.parse(ev.data) as WsMessage;
         if (msg.event === "bot:status") {
           setBotStatus(msg.data as BotStatus);
+          setIsSwitching(false);
+        } else if (msg.event === "bot:switching") {
+          setIsSwitching(true);
         } else if (msg.event === "bot:trade") {
           setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-100));
         } else if (msg.event === "bot:error") {
@@ -60,5 +64,5 @@ export function useWebSocket() {
     };
   }, [connect]);
 
-  return { connected, botStatus, trades, dockerLogs };
+  return { connected, botStatus, trades, dockerLogs, isSwitching };
 }

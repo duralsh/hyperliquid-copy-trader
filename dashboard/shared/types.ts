@@ -95,9 +95,14 @@ export interface BotTradeEvent {
   success?: boolean;
 }
 
+export interface BotSwitchingEvent {
+  from: string | null;
+  to: string;
+}
+
 export interface WsMessage {
-  event: "bot:status" | "bot:trade" | "bot:error";
-  data: BotStatus | BotTradeEvent;
+  event: "bot:status" | "bot:trade" | "bot:error" | "bot:switching";
+  data: BotStatus | BotTradeEvent | BotSwitchingEvent;
 }
 
 // My Account types

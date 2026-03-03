@@ -13,7 +13,7 @@ import type { TraderSummary, BotConfig, LeaderboardResponse } from "../../shared
 const queryClient = new QueryClient();
 
 function Dashboard() {
-  const { connected, botStatus, trades, dockerLogs } = useWebSocket();
+  const { connected, botStatus, trades, dockerLogs, isSwitching } = useWebSocket();
   const qc = useQueryClient();
   const [selectedTrader, setSelectedTrader] = useState<TraderSummary | null>(null);
   const [copyConfig, setCopyConfig] = useState<Partial<BotConfig> | null>(null);
@@ -81,7 +81,7 @@ function Dashboard() {
           </main>
 
           {/* Right: Sidebar */}
-          <RightSidebar botStatus={botStatus} dockerLogs={dockerLogs} onViewTrader={handleViewTrader} />
+          <RightSidebar botStatus={botStatus} dockerLogs={dockerLogs} onViewTrader={handleViewTrader} isSwitching={isSwitching} />
         </div>
 
         {/* Trade Log */}
@@ -112,6 +112,7 @@ function Dashboard() {
         <CopyTraderForm
           initialConfig={copyConfig}
           onClose={handleCloseCopyConfig}
+          isBotRunning={botStatus?.running ?? false}
         />
       )}
     </div>

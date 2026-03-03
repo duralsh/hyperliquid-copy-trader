@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchTraderPositions, fetchTraderFills } from "../../services/api.js";
 import { formatUSD, formatPnl, shortenAddress, formatTimeAgo } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
+import { useStopBot } from "../../hooks/useBotStatus.js";
 import type { TraderSummary, BotConfig } from "../../../../shared/types.js";
 
 interface Props {
@@ -9,6 +11,33 @@ interface Props {
   onClose: () => void;
   onCopy: (config: Partial<BotConfig>) => void;
   activeCopyTarget: string | null;
+}
+
+function StopCopyButton() {
+  const [hovered, setHovered] = useState(false);
+  const stopBot = useStopBot();
+
+  return (
+    <button
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => stopBot.mutate()}
+      disabled={stopBot.isPending}
+      className={`w-full py-4 font-bold text-sm rounded tracking-wider text-center transition-all cursor-pointer border ${
+        stopBot.isPending
+          ? "bg-amber/15 border-amber/40 text-amber opacity-70 cursor-not-allowed"
+          : hovered
+            ? "bg-red/15 border-red/40 text-red shadow-[0_0_20px_rgba(255,0,64,0.2)]"
+            : "bg-green/15 border-green/40 text-green"
+      }`}
+    >
+      {stopBot.isPending
+        ? "> STOPPING _"
+        : hovered
+          ? "> STOP COPYING _"
+          : "> CURRENTLY COPYING _"}
+    </button>
+  );
 }
 
 export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }: Props) {
@@ -40,9 +69,12 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }:
         </div>
         <button
           onClick={onClose}
-          className="text-text-dim hover:text-red text-xl px-2 transition-colors"
+          className="text-text-dim hover:text-red p-1.5 rounded hover:bg-red/10 transition-colors"
         >
-          [x]
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="4" y1="4" x2="12" y2="12" />
+            <line x1="12" y1="4" x2="4" y2="12" />
+          </svg>
         </button>
       </div>
 
@@ -79,15 +111,17 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }:
       {/* Copy button */}
       <div className="px-4 pt-4 pb-2">
         {activeCopyTarget?.toLowerCase() === trader.address.toLowerCase() ? (
-          <div className="w-full py-4 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider text-center">
-            {">"} CURRENTLY COPYING _
-          </div>
+          <StopCopyButton />
         ) : (
           <button
             onClick={() => onCopy({ targetWallet: trader.address })}
-            className="w-full py-4 bg-green text-bg font-bold hover:bg-green/85 transition-colors text-sm rounded tracking-wider shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
+            className={`w-full py-4 font-bold transition-colors text-sm rounded tracking-wider ${
+              activeCopyTarget
+                ? "bg-amber text-bg hover:bg-amber/85 shadow-[0_0_20px_rgba(255,176,0,0.3)] hover:shadow-[0_0_30px_rgba(255,176,0,0.5)]"
+                : "bg-green text-bg hover:bg-green/85 shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
+            }`}
           >
-            {">"} COPY THIS TRADER _
+            {activeCopyTarget ? "> SWITCH TO THIS TRADER _" : "> COPY THIS TRADER _"}
           </button>
         )}
       </div>

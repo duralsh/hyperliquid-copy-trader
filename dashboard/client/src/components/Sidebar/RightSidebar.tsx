@@ -10,9 +10,10 @@ interface Props {
   botStatus: BotStatus | null;
   dockerLogs: DockerLogEntry[];
   onViewTrader: (address: string) => void;
+  isSwitching?: boolean;
 }
 
-export function RightSidebar({ botStatus, dockerLogs, onViewTrader }: Props) {
+export function RightSidebar({ botStatus, dockerLogs, onViewTrader, isSwitching }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("account");
 
   return (
@@ -39,7 +40,7 @@ export function RightSidebar({ botStatus, dockerLogs, onViewTrader }: Props) {
 
       {/* Tab content — full height */}
       <div className="flex-1 overflow-hidden relative">
-        {activeTab === "account" && <MyAccount botStatus={botStatus} onViewTrader={onViewTrader} />}
+        {activeTab === "account" && <MyAccount botStatus={botStatus} onViewTrader={onViewTrader} isSwitching={isSwitching} />}
         {activeTab === "feed" && <ArenaFeed />}
         {activeTab === "logs" && <DockerLogs logs={dockerLogs} />}
       </div>

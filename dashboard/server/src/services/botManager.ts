@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import type { BotStatus, BotConfig, BotTradeEvent } from "../../../shared/types.js";
+import type { BotStatus, BotConfig, BotTradeEvent, BotSwitchingEvent } from "../../../shared/types.js";
 
 // These will be lazily imported to avoid loading copy trading deps at module level
 let CopyTraderClass: typeof import("../../../../src/copytrading/copyTrader.js").CopyTrader | null = null;
@@ -56,9 +56,26 @@ class BotManager extends EventEmitter {
 
   async start(config: BotConfig): Promise<BotStatus> {
     if (this.copyTrader) {
-      throw new Error("Bot is already running. Stop it first.");
+      // Auto-switch: stop old bot, close positions, start new one
+      const oldTarget = this.config?.targetWallet ?? null;
+      const switchEvent: BotSwitchingEvent = { from: oldTarget, to: config.targetWallet };
+      this.emit("bot:switching", switchEvent);
+
+      this.copyTrader.stop();
+      this.copyTrader.removeAllListeners();
+      this.copyTrader = null;
+      this.hlClient = null;
+      this.startedAt = null;
+
+      // Close all open positions before switching
+      const { closeAllPositions } = await import("./accountService.js");
+      await closeAllPositions();
     }
 
+    return this._startFresh(config);
+  }
+
+  private async _startFresh(config: BotConfig): Promise<BotStatus> {
     await loadCopyTrading();
 
     // Set env vars for the copy trading config

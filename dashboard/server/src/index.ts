@@ -63,6 +63,7 @@ function broadcast(event: string, data: unknown) {
 botManager.on("bot:status", (data) => broadcast("bot:status", data));
 botManager.on("bot:trade", (data) => broadcast("bot:trade", data));
 botManager.on("bot:error", (data) => broadcast("bot:error", data));
+botManager.on("bot:switching", (data) => broadcast("bot:switching", data));
 
 // Forward docker log lines to WebSocket clients
 onLine((entry) => broadcast("docker:log", entry));
