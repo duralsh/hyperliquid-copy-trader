@@ -3,11 +3,17 @@ import { useLeaderboard } from "../../hooks/useLeaderboard.js";
 import { useSmartFilter } from "../../hooks/useSmartFilter.js";
 import { formatUSD, formatPnl, formatRoi, formatVolume, shortenAddress } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
+import { StarButton } from "../StarButton.js";
+import { FavoritesSection } from "./FavoritesSection.js";
 import type { TimeWindow, SortField, TraderSummary } from "../../../../shared/types.js";
 
 interface Props {
   onSelectTrader: (trader: TraderSummary | null) => void;
   selectedAddress?: string;
+  favoriteTraders: TraderSummary[];
+  isFavorite: (address: string) => boolean;
+  toggleFavorite: (address: string, trader?: TraderSummary) => void;
+  refreshFavorites: (traders: TraderSummary[]) => void;
 }
 
 const WINDOWS: { key: TimeWindow; label: string }[] = [
@@ -38,7 +44,7 @@ const SMART_COLUMNS: { key: string; label: string; align: "left" | "right" }[] =
   { key: "vol24h", label: "24H VOL", align: "right" },
 ];
 
-export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
+export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTraders, isFavorite, toggleFavorite, refreshFavorites }: Props) {
   const [window, setWindow] = useState<TimeWindow>("month");
   const [sort, setSort] = useState<SortField>("pnl");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -115,6 +121,14 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, []);
+
+  // Update stored favorites with fresh data when API responses arrive
+  useEffect(() => {
+    const traders: TraderSummary[] = [];
+    if (allTraders.length) traders.push(...allTraders);
+    if (smartFilterData?.eligible) traders.push(...smartFilterData.eligible.map((r) => r.trader));
+    if (traders.length) refreshFavorites(traders);
+  }, [allTraders, smartFilterData, refreshFavorites]);
 
   const showSmartView = smartFilterOn && smartFilterData && !smartFilterLoading;
 
@@ -283,6 +297,17 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
           </div>
         )}
 
+        {/* === FAVORITES SECTION (always visible) === */}
+        {favoriteTraders.length > 0 && (
+          <FavoritesSection
+            traders={favoriteTraders}
+            window={window}
+            toggleFavorite={toggleFavorite}
+            onSelectTrader={onSelectTrader}
+            selectedAddress={selectedAddress}
+          />
+        )}
+
         {/* === SMART FILTER TABLE === */}
         {showSmartView && (
           <table className="w-full text-sm">
@@ -314,7 +339,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
                     onClick={() => onSelectTrader(result.trader)}
                     className={`row-hover-accent cursor-pointer transition-colors ${
                       selectedAddress === result.trader.address
-                        ? "bg-green/10 border-l-2 border-l-green"
+                        ? "bg-green/20 border-l-[3px] border-l-green shadow-[inset_0_0_12px_rgba(0,255,65,0.08)]"
                         : idx % 2 === 0 ? "row-even" : "row-odd"
                     }`}
                     style={{ minHeight: "40px" }}
@@ -322,6 +347,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
                     <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{idx + 1}</td>
                     <td className="py-2.5 px-2">
                       <div className="flex items-center gap-1">
+                        <StarButton active={isFavorite(result.trader.address)} onClick={() => toggleFavorite(result.trader.address, result.trader)} />
                         <span className="text-amber text-sm">
                           {result.trader.displayName || shortenAddress(result.trader.address)}
                         </span>
@@ -396,7 +422,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
                   onClick={() => onSelectTrader(t)}
                   className={`row-hover-accent cursor-pointer transition-colors ${
                     selectedAddress === t.address
-                      ? "bg-green/10 border-l-2 border-l-green"
+                      ? "bg-green/20 border-l-[3px] border-l-green shadow-[inset_0_0_12px_rgba(0,255,65,0.08)]"
                       : idx % 2 === 0 ? "row-even" : "row-odd"
                   }`}
                   style={{ minHeight: "40px" }}
@@ -404,6 +430,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
                   <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{t.rank}</td>
                   <td className="py-2.5 px-2">
                     <div className="flex items-center gap-1">
+                      <StarButton active={isFavorite(t.address)} onClick={() => toggleFavorite(t.address, t)} />
                       <span className="text-amber text-sm">{t.displayName || shortenAddress(t.address)}</span>
                       {t.displayName && (
                         <span className="text-text-dim text-xs ml-1">{shortenAddress(t.address)}</span>

@@ -9,16 +9,26 @@ interface Props {
 }
 
 function Label({ text, hint }: { text: string; hint: string }) {
+  const [open, setOpen] = useState(false);
   return (
-    <label className="flex items-center gap-1.5 text-text-dim text-xs mb-1 group/label">
-      {text}
-      <span
-        title={hint}
-        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-text-dim/40 text-[9px] text-text-dim cursor-help hover:border-amber hover:text-amber transition-colors"
-      >
-        ?
-      </span>
-    </label>
+    <div className="mb-1">
+      <label className="flex items-center gap-1.5 text-text-dim text-xs">
+        {text}
+        <span
+          onClick={(e) => { e.preventDefault(); setOpen((v) => !v); }}
+          className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border text-[9px] cursor-pointer transition-colors ${
+            open ? "border-amber text-amber" : "border-text-dim/40 text-text-dim hover:border-amber hover:text-amber"
+          }`}
+        >
+          ?
+        </span>
+      </label>
+      {open && (
+        <div className="mt-1 text-[10px] text-text-dim/80 leading-relaxed bg-bg/50 border border-border/50 rounded px-2 py-1">
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
 

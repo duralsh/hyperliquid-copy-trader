@@ -1,4 +1,5 @@
 import type {
+  TraderSummary,
   TraderDetail,
   TraderFill,
   BotStatus,
@@ -38,6 +39,14 @@ export function fetchLeaderboard(query: LeaderboardQuery = {}): Promise<Leaderbo
   if (query.minAccountValue !== undefined) params.set("minAccountValue", String(query.minAccountValue));
   if (query.maxAccountValue !== undefined) params.set("maxAccountValue", String(query.maxAccountValue));
   return fetchJSON(`${BASE}/leaderboard?${params}`);
+}
+
+export function lookupTraders(addresses: string[]): Promise<{ traders: TraderSummary[] }> {
+  return fetchJSON(`${BASE}/leaderboard/lookup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ addresses }),
+  });
 }
 
 export function fetchTraderPositions(address: string): Promise<TraderDetail> {

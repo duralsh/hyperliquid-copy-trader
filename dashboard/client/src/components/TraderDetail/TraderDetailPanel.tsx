@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchTraderPositions, fetchTraderFills } from "../../services/api.js";
 import { formatUSD, formatPnl, shortenAddress, formatTimeAgo } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
+import { StarButton } from "../StarButton.js";
 import { useStopBot } from "../../hooks/useBotStatus.js";
 import type { TraderSummary, BotConfig } from "../../../../shared/types.js";
 
@@ -11,6 +12,8 @@ interface Props {
   onClose: () => void;
   onCopy: (config: Partial<BotConfig>) => void;
   activeCopyTarget: string | null;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }
 
 function StopCopyButton() {
@@ -40,7 +43,7 @@ function StopCopyButton() {
   );
 }
 
-export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }: Props) {
+export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, isFavorite, onToggleFavorite }: Props) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["traderDetail", trader.address],
     queryFn: () => fetchTraderPositions(trader.address),
@@ -60,6 +63,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }:
             {">"} trader_detail<span className="cursor-blink">█</span>
           </div>
           <div className="text-amber text-lg mt-1 flex items-center gap-1.5">
+            <StarButton active={isFavorite} onClick={onToggleFavorite} />
             {trader.displayName || shortenAddress(trader.address)}
             <CopyButton text={trader.address} />
           </div>

@@ -76,6 +76,12 @@ export async function fetchLeaderboard(): Promise<TraderSummary[]> {
   return traders;
 }
 
+export async function lookupTraders(addresses: string[]): Promise<TraderSummary[]> {
+  const all = await fetchLeaderboard();
+  const wanted = new Set(addresses.map((a) => a.toLowerCase()));
+  return all.filter((t) => wanted.has(t.address.toLowerCase()));
+}
+
 export async function queryLeaderboard(query: LeaderboardQuery): Promise<LeaderboardResponse> {
   let traders = await fetchLeaderboard();
   const window: TimeWindow = query.window ?? "month";

@@ -8,12 +8,14 @@ import { TradeLog } from "./components/BotStatus/TradeLog.js";
 import { RightSidebar } from "./components/Sidebar/RightSidebar.js";
 import { TokenTicker } from "./components/TokenTicker.js";
 import { useWebSocket } from "./hooks/useWebSocket.js";
+import { useFavorites } from "./hooks/useFavorites.js";
 import type { TraderSummary, BotConfig, LeaderboardResponse } from "../../shared/types.js";
 
 const queryClient = new QueryClient();
 
 function Dashboard() {
   const { connected, botStatus, trades, dockerLogs, isSwitching } = useWebSocket();
+  const { favoriteTraders, isFavorite, toggleFavorite, refreshFavorites } = useFavorites();
   const qc = useQueryClient();
   const [selectedTrader, setSelectedTrader] = useState<TraderSummary | null>(null);
   const [copyConfig, setCopyConfig] = useState<Partial<BotConfig> | null>(null);
@@ -77,6 +79,10 @@ function Dashboard() {
             <LeaderboardTable
               onSelectTrader={setSelectedTrader}
               selectedAddress={selectedTrader?.address}
+              favoriteTraders={favoriteTraders()}
+              isFavorite={isFavorite}
+              toggleFavorite={toggleFavorite}
+              refreshFavorites={refreshFavorites}
             />
           </main>
 
@@ -103,6 +109,8 @@ function Dashboard() {
             onClose={handleCloseTrader}
             onCopy={handleCopy}
             activeCopyTarget={botStatus?.running ? botStatus.targetWallet : null}
+            isFavorite={isFavorite(selectedTrader.address)}
+            onToggleFavorite={() => toggleFavorite(selectedTrader.address, selectedTrader)}
           />
         </>
       )}
