@@ -1,3 +1,4 @@
+import { EventEmitter } from "events";
 import { copyTradingConfig } from "./config.js";
 import { logger, loggerUtils } from "./logger.js";
 import { HyperliquidClientWrapper } from "./hyperliquidClient.js";
@@ -22,14 +23,26 @@ import type {
   TradeResult,
 } from "./types.js";
 
-export class CopyTrader {
+export interface CopyTraderStatus {
+  running: boolean;
+  targetWallet: string;
+  activeTradesCount: number;
+  activeTrades: string[];
+  wsConnected: boolean;
+  startedAt: number | null;
+}
+
+export class CopyTrader extends EventEmitter {
   private client: HyperliquidClientWrapper;
   private targetWallet: string;
   private ourAddress: string;
   private activeTrades: Set<string> = new Set();
   private unsubscribeFn?: () => void;
+  private running = false;
+  private startedAt: number | null = null;
 
   constructor(client: HyperliquidClientWrapper, targetWallet: string) {
+    super();
     this.client = client;
     this.targetWallet = targetWallet;
     this.ourAddress = client.getAddress();
@@ -47,6 +60,9 @@ export class CopyTrader {
       (fill: FillEvent) => this.handleFill(fill)
     );
 
+    this.running = true;
+    this.startedAt = Date.now();
+    this.emit("status", this.getStatus());
     logger.info("Copy trader started, monitoring fills...");
   }
 
@@ -55,7 +71,21 @@ export class CopyTrader {
       this.unsubscribeFn();
       this.unsubscribeFn = undefined;
     }
+    this.running = false;
+    this.startedAt = null;
+    this.emit("status", this.getStatus());
     logger.info("Copy trader stopped");
+  }
+
+  getStatus(): CopyTraderStatus {
+    return {
+      running: this.running,
+      targetWallet: this.targetWallet,
+      activeTradesCount: this.activeTrades.size,
+      activeTrades: [...this.activeTrades],
+      wsConnected: this.client.isWsConnected(),
+      startedAt: this.startedAt,
+    };
   }
 
   private async handleFill(fill: FillEvent): Promise<void> {
@@ -71,6 +101,7 @@ export class CopyTrader {
 
       const action = getTradeAction(fill);
       logger.info("Trade action determined", { action, fill });
+      this.emit("fill", { fill, action });
 
       let ourEquityData: { accountValue: string };
       let targetEquityData: { accountValue: string };
@@ -176,6 +207,9 @@ export class CopyTrader {
           this.activeTrades.delete(fill.coin);
         }
 
+        this.emit("trade", { fill, params: tradeParams, result, action, timestamp: Date.now() });
+        this.emit("status", this.getStatus());
+
         await this.sendNotification(fill, tradeParams, result);
       } else {
         loggerUtils.logTrade("error", "Trade execution failed", {
@@ -184,6 +218,7 @@ export class CopyTrader {
           fillHash: fill.hash,
           coin: fill.coin,
         });
+        this.emit("error", { error: result.error, fill, params: tradeParams, timestamp: Date.now() });
         await sendErrorNotification(
           new TradingError(result.error || "Trade execution failed", false, {
             tradeParams,
@@ -195,6 +230,7 @@ export class CopyTrader {
     } catch (error) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Error handling fill", { fill, ...formattedError });
+      this.emit("error", { error: formattedError.message, fill, timestamp: Date.now() });
 
       if (error instanceof TradingError || error instanceof ValidationError) {
         await sendErrorNotification(

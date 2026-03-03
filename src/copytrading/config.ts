@@ -64,3 +64,20 @@ export const copyTradingConfig = {
   TARGET_WALLET: parsed.COPY_TRADING_TARGET_WALLET,
   PRIVATE_KEY: process.env.MAIN_WALLET_PRIVATE_KEY ?? "",
 } as CopyTradingConfig & { TARGET_WALLET: string; PRIVATE_KEY: string };
+
+export type CopyTradingConfigFull = CopyTradingConfig & { TARGET_WALLET: string; PRIVATE_KEY: string };
+
+export function createConfig(overrides: Partial<Record<string, string | number | boolean>>): CopyTradingConfigFull {
+  const env: Record<string, string> = { ...process.env } as Record<string, string>;
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value !== undefined) {
+      env[key] = String(value);
+    }
+  }
+  const result = configSchema.parse(env) as CopyTradingConfig;
+  return {
+    ...result,
+    TARGET_WALLET: result.COPY_TRADING_TARGET_WALLET,
+    PRIVATE_KEY: env.MAIN_WALLET_PRIVATE_KEY ?? "",
+  };
+}

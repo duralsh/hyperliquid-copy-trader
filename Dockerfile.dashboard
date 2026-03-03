@@ -1,0 +1,52 @@
+# Build client
+FROM node:20-alpine AS client-builder
+WORKDIR /app/dashboard/client
+COPY dashboard/client/package*.json ./
+RUN npm ci
+COPY dashboard/client/ ./
+COPY dashboard/shared/ ../shared/
+RUN npx vite build
+
+# Build server
+FROM node:20-alpine AS server-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY dashboard/server/package*.json ./dashboard/server/
+RUN cd dashboard/server && npm ci
+COPY . .
+RUN cd dashboard/server && npm run build || true
+
+# Production
+FROM node:20-alpine
+WORKDIR /app
+
+# Copy root dependencies (for the copy trading bot)
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy server dependencies
+COPY dashboard/server/package*.json ./dashboard/server/
+RUN cd dashboard/server && npm ci --only=production
+
+# Copy built server
+COPY --from=server-builder /app/dashboard/server/dist ./dashboard/server/dist
+COPY --from=server-builder /app/dashboard/shared ./dashboard/shared
+
+# Copy built client
+COPY --from=client-builder /app/dashboard/client/dist ./dashboard/client/dist
+
+# Copy source (needed for in-process bot imports via tsx)
+COPY src/ ./src/
+COPY tsconfig.json ./
+
+# Install tsx for runtime TypeScript execution
+RUN npm install tsx
+
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+USER nodejs
+
+EXPOSE 3001
+
+CMD ["node", "dashboard/server/dist/index.js"]

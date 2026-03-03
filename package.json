@@ -7,7 +7,11 @@
     "build": "tsc --noEmitOnError false",
     "start": "tsx src/arena-perps-agent.ts",
     "dev": "tsx watch src/arena-perps-agent.ts",
-    "copy-trade": "tsx src/copytrading/index.ts"
+    "copy-trade": "tsx src/copytrading/index.ts",
+    "dashboard:server": "cd dashboard/server && npm run dev",
+    "dashboard:client": "cd dashboard/client && npx vite --port 5173",
+    "dashboard:dev": "cd dashboard/server && npm run dev",
+    "dashboard:build": "cd dashboard/client && npx vite build && cd ../server && npm run build"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
