@@ -8,9 +8,10 @@ interface Props {
   trader: TraderSummary;
   onClose: () => void;
   onCopy: (config: Partial<BotConfig>) => void;
+  activeCopyTarget: string | null;
 }
 
-export function TraderDetailPanel({ trader, onClose, onCopy }: Props) {
+export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget }: Props) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["traderDetail", trader.address],
     queryFn: () => fetchTraderPositions(trader.address),
@@ -77,12 +78,18 @@ export function TraderDetailPanel({ trader, onClose, onCopy }: Props) {
 
       {/* Copy button */}
       <div className="px-4 pt-4 pb-2">
-        <button
-          onClick={() => onCopy({ targetWallet: trader.address })}
-          className="w-full py-4 bg-green text-bg font-bold hover:bg-green/85 transition-colors text-sm rounded tracking-wider shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
-        >
-          {">"} COPY THIS TRADER _
-        </button>
+        {activeCopyTarget?.toLowerCase() === trader.address.toLowerCase() ? (
+          <div className="w-full py-4 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider text-center">
+            {">"} CURRENTLY COPYING _
+          </div>
+        ) : (
+          <button
+            onClick={() => onCopy({ targetWallet: trader.address })}
+            className="w-full py-4 bg-green text-bg font-bold hover:bg-green/85 transition-colors text-sm rounded tracking-wider shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
+          >
+            {">"} COPY THIS TRADER _
+          </button>
+        )}
       </div>
 
       {/* Positions */}

@@ -189,6 +189,12 @@ export interface ClosePositionResult {
   error?: string;
 }
 
+export interface DockerLogEntry {
+  time: string;
+  text: string;
+  stream: "stdout" | "stderr";
+}
+
 export interface TraderFill {
   coin: string;
   px: string;
@@ -200,4 +206,19 @@ export interface TraderFill {
   hash: string;
   fee: string;
   crossed: boolean;
+}
+
+// Wallet balance types
+export interface WalletBalances {
+  ethBalance: number;
+  usdcBalance: number;
+}
+
+export interface DepositResult {
+  txHash: string;
+}
+
+export interface WithdrawResult {
+  success: boolean;
+  error?: string;
 }

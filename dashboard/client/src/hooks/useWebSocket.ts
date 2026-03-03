@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { BotStatus, BotTradeEvent } from "../../../shared/types.js";
+import type { BotStatus, BotTradeEvent, DockerLogEntry } from "../../../shared/types.js";
 
 interface WsMessage {
   event: string;
@@ -12,6 +12,7 @@ export function useWebSocket() {
   const [connected, setConnected] = useState(false);
   const [botStatus, setBotStatus] = useState<BotStatus | null>(null);
   const [trades, setTrades] = useState<BotTradeEvent[]>([]);
+  const [dockerLogs, setDockerLogs] = useState<DockerLogEntry[]>([]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -33,6 +34,8 @@ export function useWebSocket() {
           setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-100));
         } else if (msg.event === "bot:error") {
           setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-100));
+        } else if (msg.event === "docker:log") {
+          setDockerLogs((prev) => [...prev, msg.data as DockerLogEntry].slice(-500));
         }
       } catch {}
     };
@@ -57,5 +60,5 @@ export function useWebSocket() {
     };
   }, [connect]);
 
-  return { connected, botStatus, trades };
+  return { connected, botStatus, trades, dockerLogs };
 }

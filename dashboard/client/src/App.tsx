@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { LeaderboardTable } from "./components/Leaderboard/LeaderboardTable.js";
 import { TraderDetailPanel } from "./components/TraderDetail/TraderDetailPanel.js";
 import { CopyTraderForm } from "./components/BotStatus/CopyTraderForm.js";
@@ -8,12 +8,13 @@ import { TradeLog } from "./components/BotStatus/TradeLog.js";
 import { RightSidebar } from "./components/Sidebar/RightSidebar.js";
 import { TokenTicker } from "./components/TokenTicker.js";
 import { useWebSocket } from "./hooks/useWebSocket.js";
-import type { TraderSummary, BotConfig } from "../../shared/types.js";
+import type { TraderSummary, BotConfig, LeaderboardResponse } from "../../shared/types.js";
 
 const queryClient = new QueryClient();
 
 function Dashboard() {
-  const { connected, botStatus, trades } = useWebSocket();
+  const { connected, botStatus, trades, dockerLogs } = useWebSocket();
+  const qc = useQueryClient();
   const [selectedTrader, setSelectedTrader] = useState<TraderSummary | null>(null);
   const [copyConfig, setCopyConfig] = useState<Partial<BotConfig> | null>(null);
   const [logVisible, setLogVisible] = useState(false);
@@ -25,6 +26,24 @@ function Dashboard() {
     setCopyConfig(config);
     setSelectedTrader(null);
   }, []);
+
+  const handleViewTrader = useCallback((address: string) => {
+    // Try to find full TraderSummary from leaderboard cache
+    const pages = qc.getQueriesData<{ pages: LeaderboardResponse[] }>({ queryKey: ["leaderboard"] });
+    for (const [, data] of pages) {
+      const match = data?.pages?.flatMap((p) => p.traders).find(
+        (t) => t.address.toLowerCase() === address.toLowerCase()
+      );
+      if (match) { setSelectedTrader(match); return; }
+    }
+    // Fallback: open panel with minimal info — positions/fills still load from API
+    setSelectedTrader({
+      rank: 0, address, accountValue: 0, displayName: null,
+      pnl: { day: 0, week: 0, month: 0, allTime: 0 },
+      roi: { day: 0, week: 0, month: 0, allTime: 0 },
+      volume: { day: 0, week: 0, month: 0, allTime: 0 },
+    });
+  }, [qc]);
 
   return (
     <div className="flex flex-col h-screen bg-bg overflow-hidden">
@@ -62,7 +81,7 @@ function Dashboard() {
           </main>
 
           {/* Right: Sidebar */}
-          <RightSidebar />
+          <RightSidebar botStatus={botStatus} dockerLogs={dockerLogs} onViewTrader={handleViewTrader} />
         </div>
 
         {/* Trade Log */}
@@ -83,6 +102,7 @@ function Dashboard() {
             trader={selectedTrader}
             onClose={handleCloseTrader}
             onCopy={handleCopy}
+            activeCopyTarget={botStatus?.running ? botStatus.targetWallet : null}
           />
         </>
       )}

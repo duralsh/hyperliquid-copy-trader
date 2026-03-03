@@ -11,6 +11,10 @@ import type {
   SmartFilterResponse,
   CloseAllResult,
   ClosePositionResult,
+  DockerLogEntry,
+  WalletBalances,
+  DepositResult,
+  WithdrawResult,
 } from "../../../shared/types.js";
 
 const BASE = "/api";
@@ -92,8 +96,34 @@ export function deleteArenaPost(threadId: string): Promise<{ success: boolean }>
   });
 }
 
+// Docker Logs
+export function fetchDockerLogs(tail = 500): Promise<DockerLogEntry[]> {
+  return fetchJSON(`${BASE}/docker/logs?tail=${tail}`);
+}
+
 // Smart Filter
 export function fetchSmartFilter(refresh = false): Promise<SmartFilterResponse> {
   const params = refresh ? "?refresh=true" : "";
   return fetchJSON(`${BASE}/smart-filter${params}`);
+}
+
+// Wallet
+export function fetchWalletBalances(): Promise<WalletBalances> {
+  return fetchJSON(`${BASE}/wallet/balances`);
+}
+
+export function depositToHL(amount: number): Promise<DepositResult> {
+  return fetchJSON(`${BASE}/wallet/deposit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export function withdrawFromHL(amount: number): Promise<WithdrawResult> {
+  return fetchJSON(`${BASE}/wallet/withdraw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount }),
+  });
 }

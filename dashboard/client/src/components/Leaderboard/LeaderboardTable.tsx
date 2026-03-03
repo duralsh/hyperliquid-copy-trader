@@ -427,8 +427,15 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
           </table>
         )}
 
-        {/* Infinite scroll trigger — only when smart filter is off */}
-        {!smartFilterOn && hasNextPage && (
+        {/* No results when filtering */}
+        {!smartFilterOn && data && filterText && filteredTraders.length === 0 && (
+          <div className="py-8 text-center text-text-dim text-sm">
+            No traders matching "{filterText}"
+          </div>
+        )}
+
+        {/* Infinite scroll trigger — only when smart filter is off AND not filtering */}
+        {!smartFilterOn && !filterText && hasNextPage && (
           <div ref={loadMoreRef} className="py-4 text-center">
             {isFetchingNextPage ? (
               <span className="text-green text-xs">
@@ -440,7 +447,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress }: Props) {
           </div>
         )}
 
-        {!smartFilterOn && data && !hasNextPage && filteredTraders.length > 0 && (
+        {!smartFilterOn && data && !filterText && !hasNextPage && filteredTraders.length > 0 && (
           <div className="py-3 text-center text-text-dim text-xs">
             -- end of leaderboard ({totalCount} traders) --
           </div>

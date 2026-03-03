@@ -4,6 +4,9 @@ import { useMyAccount } from "../../hooks/useMyAccount.js";
 import { formatUSD, formatPnl, shortenAddress } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
 import { closeAllPositions, closePosition } from "../../services/api.js";
+import { depositToHL, withdrawFromHL } from "../../services/api.js";
+import { useWalletBalances } from "../../hooks/useWalletBalances.js";
+import type { BotStatus } from "../../../../shared/types.js";
 
 type CloseButtonState = "idle" | "confirm" | "closing" | "closed" | "error";
 type PositionCloseState = "idle" | "confirm" | "closing" | "error";
@@ -96,7 +99,191 @@ function PositionCloseButton({ coin, onSuccess }: { coin: string; onSuccess: () 
   );
 }
 
-export function MyAccount() {
+type WalletAction = "idle" | "deposit" | "withdraw";
+type ActionStatus = "idle" | "confirming" | "submitting" | "success" | "error";
+
+function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
+  const { data: walletData, isLoading: walletLoading } = useWalletBalances();
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<WalletAction>("idle");
+  const [amount, setAmount] = useState("");
+  const [status, setStatus] = useState<ActionStatus>("idle");
+  const [resultMsg, setResultMsg] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (resetTimer.current) clearTimeout(resetTimer.current); };
+  }, []);
+
+  const reset = useCallback(() => {
+    setMode("idle");
+    setAmount("");
+    setStatus("idle");
+    setResultMsg("");
+    setTxHash("");
+  }, []);
+
+  const handleAction = async () => {
+    if (status === "idle") {
+      setStatus("confirming");
+      return;
+    }
+    if (status !== "confirming") return;
+
+    const num = parseFloat(amount);
+    if (isNaN(num) || num <= 0) {
+      setResultMsg("Invalid amount");
+      setStatus("error");
+      resetTimer.current = setTimeout(reset, 3000);
+      return;
+    }
+    if (mode === "deposit" && num < 5) {
+      setResultMsg("Min 5 USDC");
+      setStatus("error");
+      resetTimer.current = setTimeout(reset, 3000);
+      return;
+    }
+
+    setStatus("submitting");
+    try {
+      if (mode === "deposit") {
+        const result = await depositToHL(num);
+        setTxHash(result.txHash);
+        setResultMsg("Deposited");
+        setStatus("success");
+      } else {
+        await withdrawFromHL(num);
+        setResultMsg("Withdrawn");
+        setStatus("success");
+      }
+      queryClient.invalidateQueries({ queryKey: ["walletBalances"] });
+      queryClient.invalidateQueries({ queryKey: ["myAccount"] });
+      resetTimer.current = setTimeout(reset, 5000);
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "Failed");
+      setStatus("error");
+      resetTimer.current = setTimeout(reset, 4000);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Balances */}
+      <div className="flex items-center justify-between">
+        <span className="text-text-dim text-xs">ETH</span>
+        <span className="text-text text-xs tabular-nums">
+          {walletLoading ? "..." : walletData ? walletData.ethBalance.toFixed(6) : "—"}
+        </span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-text-dim text-xs">USDC</span>
+        <span className="text-text text-xs tabular-nums">
+          {walletLoading ? "..." : walletData ? walletData.usdcBalance.toFixed(2) : "—"}
+        </span>
+      </div>
+
+      {/* Action buttons or form */}
+      {mode === "idle" ? (
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={() => setMode("deposit")}
+            className="flex-1 py-1 px-2 text-xs font-bold uppercase tracking-wider border border-green/40 text-green rounded hover:border-green hover:bg-green/10 transition-all duration-200 cursor-pointer bg-transparent"
+          >
+            Deposit
+          </button>
+          <button
+            onClick={() => setMode("withdraw")}
+            className="flex-1 py-1 px-2 text-xs font-bold uppercase tracking-wider border border-amber/40 text-amber rounded hover:border-amber hover:bg-amber/10 transition-all duration-200 cursor-pointer bg-transparent"
+          >
+            Withdraw
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min={mode === "deposit" ? 5 : 1}
+              step="0.01"
+              placeholder={mode === "deposit" ? "Min 5 USDC" : "Amount USDC"}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              disabled={status === "submitting" || status === "success"}
+              className="flex-1 min-w-0 bg-transparent border border-border/50 rounded px-2 py-1 text-xs text-text tabular-nums outline-none focus:border-green/60"
+            />
+            <button
+              onClick={() => {
+                if (!walletData) return;
+                if (mode === "deposit") {
+                  setAmount(walletData.usdcBalance.toFixed(2));
+                } else {
+                  setAmount(hlAvailable.toFixed(2));
+                }
+              }}
+              disabled={status === "submitting" || status === "success"}
+              className="py-1 px-1.5 text-xs font-bold uppercase tracking-wider text-text-dim border border-border/30 rounded hover:border-green hover:text-green transition-all duration-200 cursor-pointer bg-transparent shrink-0"
+            >
+              Max
+            </button>
+            <button
+              onClick={handleAction}
+              disabled={status === "submitting" || status === "success"}
+              className={`py-1 px-3 text-xs font-bold uppercase tracking-wider border rounded transition-all duration-200 cursor-pointer bg-transparent ${
+                status === "confirming"
+                  ? "border-red text-red animate-pulse"
+                  : status === "submitting"
+                  ? "border-amber/40 text-amber opacity-70 cursor-not-allowed"
+                  : mode === "deposit"
+                  ? "border-green/40 text-green hover:border-green"
+                  : "border-amber/40 text-amber hover:border-amber"
+              }`}
+            >
+              {status === "confirming" ? "Sure?" : status === "submitting" ? "..." : "OK"}
+            </button>
+            <button
+              onClick={reset}
+              disabled={status === "submitting"}
+              className="py-1 px-2 text-xs text-text-dim border border-border/30 rounded hover:border-border cursor-pointer bg-transparent"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Result messages */}
+          {status === "success" && (
+            <div className="text-green text-xs">
+              {resultMsg}
+              {txHash && (
+                <>
+                  {" — "}
+                  <a
+                    href={`https://arbiscan.io/tx/${txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-amber underline hover:text-green"
+                  >
+                    arbiscan
+                  </a>
+                </>
+              )}
+            </div>
+          )}
+          {status === "error" && (
+            <div className="text-red text-xs">{resultMsg}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface MyAccountProps {
+  botStatus: BotStatus | null;
+  onViewTrader: (address: string) => void;
+}
+
+export function MyAccount({ botStatus, onViewTrader }: MyAccountProps) {
   const { data, isLoading, error } = useMyAccount();
   const queryClient = useQueryClient();
 
@@ -209,6 +396,31 @@ export function MyAccount() {
                 {shortenAddress(data.address)}
                 <CopyButton text={data.address} />
               </span>
+            </div>
+
+            {/* Currently following */}
+            <div className="flex items-center justify-between">
+              <span className="text-text-dim text-xs uppercase tracking-wider">Following</span>
+              {botStatus?.running && botStatus.targetWallet ? (
+                <button
+                  onClick={() => onViewTrader(botStatus.targetWallet!)}
+                  className="text-green text-xs flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green shrink-0" />
+                  {shortenAddress(botStatus.targetWallet)}
+                  <CopyButton text={botStatus.targetWallet} />
+                </button>
+              ) : (
+                <span className="text-text-dim text-xs">inactive</span>
+              )}
+            </div>
+
+            {/* ARB WALLET */}
+            <div className="border-t border-border/30 pt-3">
+              <div className="text-text-dim text-xs uppercase tracking-wider mb-2">
+                Arb Wallet
+              </div>
+              <ArbWalletSection hlAvailable={parseFloat(data.totalRawUsd)} />
             </div>
 
             <div className="border-t border-border/30" />
