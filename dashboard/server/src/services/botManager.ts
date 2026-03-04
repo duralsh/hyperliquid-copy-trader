@@ -1,6 +1,7 @@
 import { EventEmitter } from "events";
 import type { BotStatus, BotConfig, BotTradeEvent, BotSwitchingEvent } from "../../../shared/types.js";
 import type { UserContext } from "./userContext.js";
+import { insertFollowEvent } from "./followEventService.js";
 
 // These will be lazily imported to avoid loading copy trading deps at module level
 let CopyTraderClass: typeof import("../../../../src/copytrading/copyTrader.js").CopyTrader | null = null;
@@ -59,6 +60,8 @@ class BotManager extends EventEmitter {
       const switchEvent: BotSwitchingEvent = { from: oldTarget, to: config.targetWallet };
       this.emit("bot:switching", { userId: uid, ...switchEvent });
 
+      insertFollowEvent(uid, "switched", config.targetWallet, oldTarget);
+
       existing.copyTrader.stop();
       existing.copyTrader.removeAllListeners();
       this.instances.delete(uid);
@@ -66,6 +69,8 @@ class BotManager extends EventEmitter {
       // Close all open positions before switching
       const { closeAllPositions } = await import("./accountService.js");
       await closeAllPositions(ctx?.walletAddress, ctx?.arenaApiKey);
+    } else {
+      insertFollowEvent(uid, "started", config.targetWallet);
     }
 
     return this._startFresh(config, uid, ctx);
@@ -159,6 +164,7 @@ class BotManager extends EventEmitter {
       throw new Error("Bot is not running.");
     }
 
+    insertFollowEvent(uid, "stopped", instance.config.targetWallet);
     instance.copyTrader.stop();
     instance.copyTrader.removeAllListeners();
     this.instances.delete(uid);

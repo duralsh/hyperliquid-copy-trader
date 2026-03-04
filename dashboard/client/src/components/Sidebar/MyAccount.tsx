@@ -3,10 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMyAccount } from "../../hooks/useMyAccount.js";
 import { formatUSD, formatPnl, formatTimeAgo, shortenAddress } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
-import { closeAllPositions, closePosition, fetchTraderFills } from "../../services/api.js";
+import { closeAllPositions, closePosition, fetchTraderFills, fetchFollowEvents, lookupTraders } from "../../services/api.js";
 import { depositToHL, withdrawFromHL } from "../../services/api.js";
 import { useWalletBalances } from "../../hooks/useWalletBalances.js";
-import type { BotStatus } from "../../../../shared/types.js";
+import type { BotStatus, FollowEvent, TraderFill } from "../../../../shared/types.js";
 
 type CloseButtonState = "idle" | "confirm" | "closing" | "closed" | "error";
 type PositionCloseState = "idle" | "confirm" | "closing" | "error";
@@ -278,12 +278,35 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
   );
 }
 
-function TradingHistory({ address }: { address: string }) {
+function TradingHistory({ address, onViewTrader }: { address: string; onViewTrader: (address: string) => void }) {
   const { data: fills, isLoading, error } = useQuery({
     queryKey: ["myFills", address],
     queryFn: () => fetchTraderFills(address),
     refetchInterval: 30_000,
   });
+
+  const { data: followEvents } = useQuery({
+    queryKey: ["followEvents"],
+    queryFn: fetchFollowEvents,
+    refetchInterval: 30_000,
+  });
+
+  type TimelineItem =
+    | { kind: "fill"; data: TraderFill; time: number }
+    | { kind: "follow"; data: FollowEvent; time: number };
+
+  const timeline: TimelineItem[] = [];
+  if (fills) {
+    for (const f of fills) {
+      timeline.push({ kind: "fill", data: f, time: f.time });
+    }
+  }
+  if (followEvents) {
+    for (const e of followEvents) {
+      timeline.push({ kind: "follow", data: e, time: e.timestamp });
+    }
+  }
+  timeline.sort((a, b) => b.time - a.time);
 
   return (
     <div className="border-t border-border/30 pt-3">
@@ -303,50 +326,88 @@ function TradingHistory({ address }: { address: string }) {
         </div>
       )}
 
-      {fills && fills.length === 0 && (
+      {!isLoading && !error && timeline.length === 0 && (
         <div className="text-text-dim text-xs text-center py-3">
-          no recent trades
+          no recent activity
         </div>
       )}
 
-      {fills && fills.length > 0 && (
+      {timeline.length > 0 && (
         <div className="space-y-1">
-          {fills.map((fill, i) => {
-            const isBuy = fill.side === "B";
-            const closedPnl = parseFloat(fill.closedPnl);
-            const isClose = fill.dir.startsWith("Close");
-            const dirLabel = fill.dir
-              .replace("Open ", "O/")
-              .replace("Close ", "C/");
+          {timeline.map((item, i) => {
+            if (item.kind === "fill") {
+              const fill = item.data;
+              const isBuy = fill.side === "B";
+              const closedPnl = parseFloat(fill.closedPnl);
+              const isClose = fill.dir.startsWith("Close");
+              const dirLabel = fill.dir
+                .replace("Open ", "O/")
+                .replace("Close ", "C/");
+
+              return (
+                <div
+                  key={`fill-${fill.hash}-${i}`}
+                  className="flex items-center justify-between py-1 text-xs group"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-amber font-bold">{fill.coin}</span>
+                    <span className={isBuy ? "text-green" : "text-red"}>
+                      {dirLabel}
+                    </span>
+                    <span className="text-text-dim tabular-nums">
+                      {parseFloat(fill.sz).toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isClose ? (
+                      <span className={`tabular-nums font-bold ${closedPnl >= 0 ? "text-green" : "text-red"}`}>
+                        {formatPnl(closedPnl)}
+                      </span>
+                    ) : (
+                      <span className="text-text-dim tabular-nums">
+                        ${parseFloat(fill.px).toFixed(2)}
+                      </span>
+                    )}
+                    <span className="text-text-dim/60 tabular-nums text-[10px]">
+                      {formatTimeAgo(fill.time)}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            // Follow event
+            const event = item.data;
+            const label =
+              event.action === "started"
+                ? "Started following"
+                : event.action === "stopped"
+                ? "Stopped following"
+                : "Switched to";
+            const colorClass =
+              event.action === "started"
+                ? "text-green"
+                : event.action === "stopped"
+                ? "text-red"
+                : "text-amber";
 
             return (
               <div
-                key={fill.hash + i}
-                className="flex items-center justify-between py-1 text-xs group"
+                key={`follow-${event.id}`}
+                className="flex items-center justify-between py-1 text-xs"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-amber font-bold">{fill.coin}</span>
-                  <span className={isBuy ? "text-green" : "text-red"}>
-                    {dirLabel}
-                  </span>
-                  <span className="text-text-dim tabular-nums">
-                    {parseFloat(fill.sz).toFixed(4)}
-                  </span>
+                  <span className={`${colorClass} font-bold`}>{label}</span>
+                  <button
+                    onClick={() => onViewTrader(event.targetWallet)}
+                    className="text-amber hover:text-green hover:underline bg-transparent border-none p-0 cursor-pointer text-xs tabular-nums"
+                  >
+                    {shortenAddress(event.targetWallet)}
+                  </button>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {isClose ? (
-                    <span className={`tabular-nums font-bold ${closedPnl >= 0 ? "text-green" : "text-red"}`}>
-                      {formatPnl(closedPnl)}
-                    </span>
-                  ) : (
-                    <span className="text-text-dim tabular-nums">
-                      ${parseFloat(fill.px).toFixed(2)}
-                    </span>
-                  )}
-                  <span className="text-text-dim/60 tabular-nums text-[10px]">
-                    {formatTimeAgo(fill.time)}
-                  </span>
-                </div>
+                <span className="text-text-dim/60 tabular-nums text-[10px] shrink-0">
+                  {formatTimeAgo(event.timestamp)}
+                </span>
               </div>
             );
           })}
@@ -364,6 +425,15 @@ interface MyAccountProps {
 
 export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountProps) {
   const { data, isLoading, error } = useMyAccount();
+  const { data: pnlData } = useQuery({
+    queryKey: ["myPnl", data?.address],
+    queryFn: async () => {
+      const result = await lookupTraders([data!.address]);
+      return result.traders[0] ?? null;
+    },
+    enabled: !!data?.address,
+    refetchInterval: 60_000,
+  });
   const queryClient = useQueryClient();
 
   const [btnState, setBtnState] = useState<CloseButtonState>("idle");
@@ -525,6 +595,24 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
               </span>
             </div>
 
+            {/* Realized PNL */}
+            {pnlData && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-dim text-xs uppercase tracking-wider">All-Time PNL</span>
+                  <span className={`text-base tabular-nums font-bold ${pnlData.pnl.allTime >= 0 ? "text-green" : "text-red"}`}>
+                    {formatPnl(pnlData.pnl.allTime)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-dim text-xs uppercase tracking-wider">Month PNL</span>
+                  <span className={`text-base tabular-nums font-bold ${pnlData.pnl.month >= 0 ? "text-green" : "text-red"}`}>
+                    {formatPnl(pnlData.pnl.month)}
+                  </span>
+                </div>
+              </>
+            )}
+
             {/* Margin Used */}
             <div className="flex items-center justify-between">
               <span className="text-text-dim text-xs uppercase tracking-wider">Margin Used</span>
@@ -611,7 +699,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             )}
 
             {/* Trading History */}
-            <TradingHistory address={data.address} />
+            <TradingHistory address={data.address} onViewTrader={onViewTrader} />
           </>
         )}
       </div>

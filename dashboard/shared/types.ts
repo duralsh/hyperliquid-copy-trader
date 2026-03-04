@@ -216,3 +216,11 @@ export interface WithdrawResult {
   success: boolean;
   error?: string;
 }
+
+export interface FollowEvent {
+  id: number;
+  action: "started" | "stopped" | "switched";
+  targetWallet: string;
+  previousWallet?: string | null;
+  timestamp: number;
+}

@@ -16,6 +16,7 @@ import type {
   WalletBalances,
   DepositResult,
   WithdrawResult,
+  FollowEvent,
 } from "../../../shared/types.js";
 
 const BASE = "/api";
@@ -88,6 +89,10 @@ export function stopBot(): Promise<BotStatus> {
 // My Account
 export function fetchMyAccount(): Promise<MyAccountData> {
   return fetchJSON(`${BASE}/account`);
+}
+
+export function fetchFollowEvents(): Promise<FollowEvent[]> {
+  return fetchJSON(`${BASE}/account/follow-events`);
 }
 
 export function closeAllPositions(): Promise<CloseAllResult> {

@@ -35,6 +35,16 @@ db.exec(`
     PRIMARY KEY (user_id, address),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS follow_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    target_wallet TEXT NOT NULL,
+    previous_wallet TEXT,
+    timestamp INTEGER NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
 export function getDb(): Database.Database {

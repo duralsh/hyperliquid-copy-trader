@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fetchMyAccount, closeAllPositions, closePosition } from "../services/accountService.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
+import { getFollowEvents } from "../services/followEventService.js";
 
 const router = Router();
 
@@ -26,6 +27,11 @@ router.post("/close-position", asyncHandler("Close position", async (req, res) =
 router.post("/close-all", asyncHandler("Close all", async (req, res) => {
   const result = await closeAllPositions(req.userContext?.walletAddress, req.userContext?.arenaApiKey);
   res.json(result);
+}));
+
+router.get("/follow-events", asyncHandler("Follow events", async (req, res) => {
+  const events = getFollowEvents(req.user!.userId);
+  res.json(events);
 }));
 
 export default router;
