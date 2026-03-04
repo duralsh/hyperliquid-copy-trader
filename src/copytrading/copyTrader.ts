@@ -317,19 +317,22 @@ export class CopyTrader extends EventEmitter {
     price: string,
     ourEquity: number
   ): Promise<TradeResult> {
-    const validation = validateTradeParams(params, price, ourEquity);
-    if (!validation.valid) {
-      const error = new ValidationError(validation.reason || "Invalid trade parameters", {
-        params,
-        price,
-        ourEquity,
-      });
-      logger.warn("Trade validation failed", ErrorHandler.formatError(error));
-      return {
-        success: false,
-        error: error.message,
-        params,
-      };
+    // Skip margin validation for reduce/close — they reduce risk, not add it
+    if (!params.reduceOnly) {
+      const validation = validateTradeParams(params, price, ourEquity);
+      if (!validation.valid) {
+        const error = new ValidationError(validation.reason || "Invalid trade parameters", {
+          params,
+          price,
+          ourEquity,
+        });
+        logger.warn("Trade validation failed", ErrorHandler.formatError(error));
+        return {
+          success: false,
+          error: error.message,
+          params,
+        };
+      }
     }
 
     try {
