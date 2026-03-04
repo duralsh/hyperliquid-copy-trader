@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { lookupTraders, apiFetchFavorites, apiAddFavorite, apiRemoveFavorite } from "../services/api.js";
 import type { TraderSummary } from "../../../shared/types.js";
 
@@ -84,7 +84,7 @@ export function useFavorites() {
     });
   }, []);
 
-  const favoriteTraders = useCallback(
+  const favoriteTraders = useMemo(
     () => [...favorites.values()],
     [favorites]
   );

@@ -1,5 +1,6 @@
 import type { TokenPrice } from "../../../shared/types.js";
 import { hlInfoRequest } from "./hlClient.js";
+import { TTLCache } from "./cache.js";
 
 const TRACKED_COINS = [
   "BTC", "ETH", "SOL", "DOGE", "AVAX", "LINK",
@@ -35,15 +36,11 @@ const COINGECKO_IDS: Record<string, string> = {
 };
 
 // Icon cache — refreshed every 6 hours (icons never change)
-const ICON_CACHE_TTL = 6 * 60 * 60 * 1000;
-let iconCache: Record<string, string> = {};
-let iconCacheAt = 0;
+const iconCache = new TTLCache<Record<string, string>>(6 * 60 * 60 * 1000);
 
 async function fetchIconUrls(): Promise<Record<string, string>> {
-  const now = Date.now();
-  if (Object.keys(iconCache).length > 0 && now - iconCacheAt < ICON_CACHE_TTL) {
-    return iconCache;
-  }
+  const cached = iconCache.get();
+  if (cached) return cached;
 
   const ids = Object.values(COINGECKO_IDS).join(",");
   try {
@@ -53,31 +50,30 @@ async function fetchIconUrls(): Promise<Record<string, string>> {
     );
     if (!res.ok) {
       console.warn(`CoinGecko icon fetch failed: ${res.status}`);
-      return iconCache; // return stale cache on failure
+      return cached ?? {}; // return stale cache on failure
     }
     const data = (await res.json()) as Array<{ id: string; image: string }>;
 
+    // Build id → image lookup map for O(1) access
+    const idToImage = new Map(data.map((c) => [c.id, c.image]));
+
     // Build symbol → icon URL map
-    const newCache: Record<string, string> = {};
+    const newIcons: Record<string, string> = {};
     for (const [symbol, geckoId] of Object.entries(COINGECKO_IDS)) {
-      const coin = data.find((c) => c.id === geckoId);
-      if (coin?.image) {
-        newCache[symbol] = coin.image;
+      const image = idToImage.get(geckoId);
+      if (image) {
+        newIcons[symbol] = image;
       }
     }
-    iconCache = newCache;
-    iconCacheAt = now;
-    return iconCache;
+    iconCache.set(newIcons);
+    return newIcons;
   } catch (err: unknown) {
     console.warn("Failed to fetch CoinGecko icons:", err);
-    return iconCache;
+    return cached ?? {};
   }
 }
 
-const CACHE_TTL_MS = 30_000;
-
-let cachedPrices: TokenPrice[] | null = null;
-let cachedAt = 0;
+const pricesCache = new TTLCache<TokenPrice[]>(30_000);
 
 async function fetchAllMids(): Promise<Record<string, string>> {
   const raw = await hlInfoRequest<Record<string, string>>({ type: "allMids" });
@@ -179,10 +175,8 @@ async function fetchCandle2hAgo(coin: string, candleCoinOverride?: string): Prom
 }
 
 export async function getTokenPrices(): Promise<TokenPrice[]> {
-  const now = Date.now();
-  if (cachedPrices && now - cachedAt < CACHE_TTL_MS) {
-    return cachedPrices;
-  }
+  const cached = pricesCache.get();
+  if (cached) return cached;
 
   // Fetch standard mids, all xyz DEX markets, and icons in parallel
   const [mids, xyzData, icons] = await Promise.all([
@@ -253,8 +247,7 @@ export async function getTokenPrices(): Promise<TokenPrice[]> {
     });
   }
 
-  cachedPrices = prices;
-  cachedAt = Date.now();
+  pricesCache.set(prices);
 
   return prices;
 }

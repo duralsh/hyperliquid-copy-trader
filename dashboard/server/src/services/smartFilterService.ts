@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/types.js";
 import { fetchMyAccount } from "./accountService.js";
 import { fetchLeaderboard } from "./leaderboardService.js";
+import { TTLCache } from "./cache.js";
 
 // ---------------------------------------------------------------------------
 // Filter thresholds
@@ -24,7 +25,7 @@ const MIN_PNL_MONTH = 0;         // positive 30d PnL required
 // Cache
 // ---------------------------------------------------------------------------
 
-let cache: { data: SmartFilterResponse; fetchedAt: number } | null = null;
+const cache = new TTLCache<SmartFilterResponse>(CACHE_TTL);
 
 // ---------------------------------------------------------------------------
 // Filter passes (all use leaderboard data only — zero extra API calls)
@@ -73,8 +74,9 @@ function buildResult(trader: TraderSummary, userEquity: number): SmartFilterTrad
 // ---------------------------------------------------------------------------
 
 export async function runSmartFilter(refresh?: boolean, walletAddress?: string): Promise<SmartFilterResponse> {
-  if (!refresh && cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
-    return cache.data;
+  if (!refresh) {
+    const cached = cache.get();
+    if (cached) return cached;
   }
 
   // Only 2 calls — both already cached by their own services
@@ -120,6 +122,6 @@ export async function runSmartFilter(refresh?: boolean, walletAddress?: string):
     computedAt: Date.now(),
   };
 
-  cache = { data: response, fetchedAt: Date.now() };
+  cache.set(response);
   return response;
 }

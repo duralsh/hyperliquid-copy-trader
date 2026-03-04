@@ -1,7 +1,7 @@
 import type { TraderSummary, LeaderboardQuery, LeaderboardResponse, TimeWindow, SortField } from "../../../shared/types.js";
+import { TTLCache } from "./cache.js";
 
 const LEADERBOARD_URL = "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard";
-const CACHE_TTL = 60_000; // 60s
 
 interface RawPerformance {
   pnl: string;
@@ -17,7 +17,7 @@ interface RawLeaderboardRow {
   windowPerformances: [string, RawPerformance][];
 }
 
-let cache: { data: TraderSummary[]; fetchedAt: number } | null = null;
+const cache = new TTLCache<TraderSummary[]>(60_000); // 60s
 
 function parsePerf(
   windows: [string, RawPerformance][]
@@ -34,9 +34,8 @@ function parsePerf(
 }
 
 export async function fetchLeaderboard(): Promise<TraderSummary[]> {
-  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
-    return cache.data;
-  }
+  const cached = cache.get();
+  if (cached) return cached;
 
   const res = await fetch(LEADERBOARD_URL);
   if (!res.ok) throw new Error(`Leaderboard fetch failed: ${res.status}`);
@@ -72,7 +71,7 @@ export async function fetchLeaderboard(): Promise<TraderSummary[]> {
     };
   });
 
-  cache = { data: traders, fetchedAt: Date.now() };
+  cache.set(traders);
   return traders;
 }
 

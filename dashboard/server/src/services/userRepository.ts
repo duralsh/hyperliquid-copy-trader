@@ -43,21 +43,6 @@ function toPublicUser(row: UserRow): PublicUser {
   };
 }
 
-export function createUser(username: string, password: string, role = "user"): PublicUser {
-  const hash = bcrypt.hashSync(password, 10);
-  const db = getDb();
-  const result = db.prepare(
-    "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)"
-  ).run(username, hash, role);
-  return {
-    id: result.lastInsertRowid as number,
-    username,
-    role,
-    walletAddress: null,
-    onboarded: false,
-  };
-}
-
 export function findByUsername(username: string): UserRow | undefined {
   const db = getDb();
   return db.prepare("SELECT * FROM users WHERE username = ?").get(username) as UserRow | undefined;
@@ -123,11 +108,6 @@ export function getUserCredentials(userId: number): {
     privateKey: decrypt(row.private_key_encrypted, row.private_key_iv, row.private_key_tag),
     arenaApiKey: decrypt(row.arena_api_key_encrypted, row.arena_api_key_iv, row.arena_api_key_tag),
   };
-}
-
-export function markOnboarded(userId: number): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET onboarded_at = datetime('now') WHERE id = ?").run(userId);
 }
 
 export function addFavorite(userId: number, address: string): void {

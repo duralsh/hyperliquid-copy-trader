@@ -1,12 +1,9 @@
-import type { MyAccountData, MyAccountPosition, CloseAllResult, ClosePositionResult } from "../../../shared/types.js";
-import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex } from "./hlClient.js";
+import type { MyAccountData, CloseAllResult, ClosePositionResult } from "../../../shared/types.js";
+import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex, extractPositions } from "./hlClient.js";
 import { arenaRequest } from "./arenaClient.js";
+import { TTLCache } from "./cache.js";
 
-export type { CloseAllResult, ClosePositionResult } from "../../../shared/types.js";
-
-const CACHE_TTL = 10_000; // 10s
-
-let cache: { data: MyAccountData; fetchedAt: number } | null = null;
+const cache = new TTLCache<MyAccountData>(10_000); // 10s
 
 function getWalletAddress(): string {
   const addr = process.env.MAIN_WALLET_ADDRESS ?? "";
@@ -21,7 +18,7 @@ function getWalletAddress(): string {
  */
 export async function closePosition(coin: string, walletAddress?: string, arenaApiKey?: string): Promise<ClosePositionResult> {
   // Force-fetch fresh positions (bypass cache)
-  cache = null;
+  cache.invalidate();
   const account = await fetchMyAccount(walletAddress);
 
   const pos = account.positions.find((p) => p.coin === coin);
@@ -56,7 +53,7 @@ export async function closePosition(coin: string, walletAddress?: string, arenaA
     }, arenaApiKey);
 
     // Invalidate cache so next fetch reflects the closed position
-    cache = null;
+    cache.invalidate();
 
     return {
       success: true,
@@ -78,7 +75,7 @@ export async function closePosition(coin: string, walletAddress?: string, arenaA
  */
 export async function closeAllPositions(walletAddress?: string, arenaApiKey?: string): Promise<CloseAllResult> {
   // Force-fetch fresh positions (bypass cache)
-  cache = null;
+  cache.invalidate();
   const account = await fetchMyAccount(walletAddress);
 
   if (account.positions.length === 0) {
@@ -129,7 +126,7 @@ export async function closeAllPositions(walletAddress?: string, arenaApiKey?: st
   }
 
   // Invalidate cache so next fetch reflects closed positions
-  cache = null;
+  cache.invalidate();
 
   return result;
 }
@@ -137,9 +134,8 @@ export async function closeAllPositions(walletAddress?: string, arenaApiKey?: st
 export async function fetchMyAccount(walletAddress?: string): Promise<MyAccountData> {
   const address = walletAddress ?? getWalletAddress();
 
-  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
-    return cache.data;
-  }
+  const cached = cache.get();
+  if (cached) return cached;
 
   // Fetch all DEXes in parallel
   const results = await Promise.all(
@@ -151,8 +147,7 @@ export async function fetchMyAccount(walletAddress?: string): Promise<MyAccountD
   let totalMarginUsed = 0;
   let totalNtlPos = 0;
   let totalRawUsd = 0;
-  let totalUnrealizedPnl = 0;
-  const positions: MyAccountPosition[] = [];
+  const positions = [];
 
   for (const state of results) {
     if (!state) continue;
@@ -161,25 +156,12 @@ export async function fetchMyAccount(walletAddress?: string): Promise<MyAccountD
     totalMarginUsed += parseFloat(ms.totalMarginUsed ?? "0") || 0;
     totalNtlPos += parseFloat(ms.totalNtlPos ?? "0") || 0;
     totalRawUsd += parseFloat(ms.totalRawUsd ?? "0") || 0;
-
-    for (const ap of state.assetPositions ?? []) {
-      const p = ap.position;
-      if (!p || parseFloat(String(p.szi)) === 0) continue;
-      const lev = p.leverage as { value?: string | number } | undefined;
-      const unrealizedPnl = String(p.unrealizedPnl ?? "0");
-      totalUnrealizedPnl += parseFloat(unrealizedPnl) || 0;
-      positions.push({
-        coin: String(p.coin),
-        szi: String(p.szi),
-        entryPx: String(p.entryPx ?? "0"),
-        leverage: String(lev?.value ?? "1"),
-        liquidationPx: String(p.liquidationPx ?? "0"),
-        marginUsed: String(p.marginUsed ?? "0"),
-        returnOnEquity: String(p.returnOnEquity ?? "0"),
-        unrealizedPnl,
-      });
-    }
+    positions.push(...extractPositions(state));
   }
+
+  const totalUnrealizedPnl = positions.reduce(
+    (sum, p) => sum + (parseFloat(p.unrealizedPnl) || 0), 0,
+  );
 
   const data: MyAccountData = {
     address,
@@ -191,6 +173,6 @@ export async function fetchMyAccount(walletAddress?: string): Promise<MyAccountD
     totalUnrealizedPnl,
   };
 
-  cache = { data, fetchedAt: Date.now() };
+  cache.set(data);
   return data;
 }

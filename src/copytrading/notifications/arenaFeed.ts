@@ -35,13 +35,13 @@ async function processQueue(): Promise<void> {
 
 function post(content: string): void {
   if (copyTradingConfig.DRY_RUN) {
-    logger.info("📝 [DRY RUN] Would post to Arena feed:", { content });
+    logger.info("[DRY RUN] Would post to Arena feed", { content });
     return;
   }
   if (!copyTradingConfig.ARENA_FEED_ENABLED) return;
-  if (queue.length >= MAX_QUEUE) {
-    queue.shift();
-  }
+
+  if (queue.length >= MAX_QUEUE) queue.shift();
+
   queue.push(async () => {
     await arenaClient().post("/agents/threads", {
       content: content.replace(/\n/g, "<br>"),
@@ -50,10 +50,6 @@ function post(content: string): void {
     });
   });
   processQueue();
-}
-
-export async function initTelegramBot(): Promise<void> {
-  // No-op, Arena feed uses existing API key
 }
 
 export async function sendTradeNotification(
@@ -111,15 +107,3 @@ export async function sendErrorNotification(
   // post(`Error: ${msg}`);
 }
 
-export async function sendStartupNotification(): Promise<void> {
-  // Skip startup post - high quality events only (opens/closes)
-}
-
-export async function sendShutdownNotification(): Promise<void> {
-  // Skip shutdown post - high quality events only
-}
-
-
-export async function cleanupTelegramBot(): Promise<void> {
-  await sendShutdownNotification();
-}

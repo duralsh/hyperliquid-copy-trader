@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useLeaderboard } from "../../hooks/useLeaderboard.js";
 import { useSmartFilter } from "../../hooks/useSmartFilter.js";
 import { useAuth } from "../../hooks/useAuth.js";
@@ -77,17 +77,22 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
     error: smartFilterError,
   } = useSmartFilter(smartFilterOn);
 
-  const allTraders = data?.pages.flatMap((p) => p.traders) ?? [];
+  const allTraders = useMemo(
+    () => data?.pages.flatMap((p) => p.traders) ?? [],
+    [data?.pages]
+  );
   const totalCount = data?.pages[0]?.total ?? 0;
 
   // Filter by name/address
-  const filteredTraders = filterText
-    ? allTraders.filter(
-        (t) =>
-          (t.displayName ?? "").toLowerCase().includes(filterText.toLowerCase()) ||
-          t.address.toLowerCase().includes(filterText.toLowerCase())
-      )
-    : allTraders;
+  const filteredTraders = useMemo(() => {
+    if (!filterText) return allTraders;
+    const needle = filterText.toLowerCase();
+    return allTraders.filter(
+      (t) =>
+        (t.displayName ?? "").toLowerCase().includes(needle) ||
+        t.address.toLowerCase().includes(needle)
+    );
+  }, [allTraders, filterText]);
 
   const toggleSort = (field: SortField) => {
     if (sort === field) {

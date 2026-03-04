@@ -1,38 +1,16 @@
 import type { TraderDetail, TraderPosition, TraderFill } from "../../../shared/types.js";
-import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex, type ClearinghouseState } from "./hlClient.js";
+import { hlInfoRequest, ACCOUNT_DEXES, fetchClearinghouseForDex, extractPositions } from "./hlClient.js";
+import { TTLMapCache } from "./cache.js";
 
-const CACHE_TTL = 10_000; // 10s
 const FILLS_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_RECENT_FILLS = 100;
 
-const cache = new Map<string, { data: TraderDetail; fetchedAt: number }>();
-const fillsCache = new Map<string, { data: TraderFill[]; fetchedAt: number }>();
-
-function extractPositions(state: ClearinghouseState): TraderPosition[] {
-  const positions: TraderPosition[] = [];
-  for (const ap of state.assetPositions ?? []) {
-    const p = ap.position;
-    if (!p || parseFloat(String(p.szi)) === 0) continue;
-    const lev = p.leverage as { value?: string | number } | undefined;
-    positions.push({
-      coin: String(p.coin),
-      szi: String(p.szi),
-      entryPx: String(p.entryPx ?? "0"),
-      leverage: String(lev?.value ?? "1"),
-      liquidationPx: String(p.liquidationPx ?? "0"),
-      marginUsed: String(p.marginUsed ?? "0"),
-      returnOnEquity: String(p.returnOnEquity ?? "0"),
-      unrealizedPnl: String(p.unrealizedPnl ?? "0"),
-    });
-  }
-  return positions;
-}
+const cache = new TTLMapCache<string, TraderDetail>(10_000); // 10s
+const fillsCache = new TTLMapCache<string, TraderFill[]>(10_000);
 
 export async function fetchTraderDetail(address: string): Promise<TraderDetail> {
   const cached = cache.get(address);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-    return cached.data;
-  }
+  if (cached) return cached;
 
   // Fetch all DEXes in parallel
   const results = await Promise.all(
@@ -62,15 +40,13 @@ export async function fetchTraderDetail(address: string): Promise<TraderDetail> 
     positions: allPositions,
   };
 
-  cache.set(address, { data: detail, fetchedAt: Date.now() });
+  cache.set(address, detail);
   return detail;
 }
 
 export async function fetchTraderFills(address: string): Promise<TraderFill[]> {
-  const cached = fillsCache.get(address);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) {
-    return cached.data;
-  }
+  const cachedFills = fillsCache.get(address);
+  if (cachedFills) return cachedFills;
 
   // userFillsByTime returns recent fills; userFills caps at 2000 oldest
   const startTime = Date.now() - FILLS_LOOKBACK_MS;
@@ -100,6 +76,6 @@ export async function fetchTraderFills(address: string): Promise<TraderFill[]> {
     crossed: f.crossed,
   }));
 
-  fillsCache.set(address, { data: fills, fetchedAt: Date.now() });
+  fillsCache.set(address, fills);
   return fills;
 }

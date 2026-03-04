@@ -7,9 +7,6 @@ export type Side = "A" | "B"; // A = Ask (sell), B = Bid (buy)
 export type OrderType = "Limit" | "Market";
 export type TimeInForce = "Gtc" | "Ioc" | "Alo";
 
-export type PositionSide = "Long" | "Short";
-export type TradeAction = "open" | "reduce" | "close";
-
 export interface FillEvent {
   coin: string;
   px: string;

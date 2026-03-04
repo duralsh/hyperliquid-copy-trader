@@ -1,6 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { BotStatus, BotTradeEvent, DockerLogEntry } from "../../../shared/types.js";
 
+const WS_RECONNECT_MS = 3_000;
+const MAX_TRADE_EVENTS = 100;
+const MAX_DOCKER_LOGS = 500;
+
 interface WsMessage {
   event: string;
   data: unknown;
@@ -36,18 +40,18 @@ export function useWebSocket() {
         } else if (msg.event === "bot:switching") {
           setIsSwitching(true);
         } else if (msg.event === "bot:trade") {
-          setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-100));
+          setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-MAX_TRADE_EVENTS));
         } else if (msg.event === "bot:error") {
-          setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-100));
+          setTrades((prev) => [...prev, msg.data as BotTradeEvent].slice(-MAX_TRADE_EVENTS));
         } else if (msg.event === "docker:log") {
-          setDockerLogs((prev) => [...prev, msg.data as DockerLogEntry].slice(-500));
+          setDockerLogs((prev) => [...prev, msg.data as DockerLogEntry].slice(-MAX_DOCKER_LOGS));
         }
       } catch {}
     };
 
     ws.onclose = () => {
       setConnected(false);
-      reconnectTimer.current = setTimeout(connect, 3000);
+      reconnectTimer.current = setTimeout(connect, WS_RECONNECT_MS);
     };
 
     ws.onerror = () => {

@@ -106,16 +106,22 @@ class BotManager extends EventEmitter {
     this.instances.set(userId, instance);
 
     // Forward events
+    const nested = (obj: Record<string, unknown>, key: string): Record<string, unknown> | undefined =>
+      obj[key] as Record<string, unknown> | undefined;
+
     copyTrader.on("trade", (data: Record<string, unknown>) => {
+      const fill = nested(data, "fill");
+      const params = nested(data, "params");
+      const result = nested(data, "result");
       const event: BotTradeEvent = {
         type: "trade",
         timestamp: (data.timestamp as number) ?? Date.now(),
-        coin: (data.fill as Record<string, unknown>)?.coin as string,
+        coin: fill?.coin as string,
         action: data.action as string,
-        side: (data.params as Record<string, unknown>)?.side as string,
-        size: (data.params as Record<string, unknown>)?.size as string,
-        price: (data.fill as Record<string, unknown>)?.px as string,
-        orderId: (data.result as Record<string, unknown>)?.orderId as string,
+        side: params?.side as string,
+        size: params?.size as string,
+        price: fill?.px as string,
+        orderId: result?.orderId as string,
         success: true,
       };
       this._addTradeEvent(instance, event);
@@ -124,10 +130,11 @@ class BotManager extends EventEmitter {
     });
 
     copyTrader.on("error", (data: Record<string, unknown>) => {
+      const fill = nested(data, "fill");
       const event: BotTradeEvent = {
         type: "error",
         timestamp: (data.timestamp as number) ?? Date.now(),
-        coin: (data.fill as Record<string, unknown>)?.coin as string,
+        coin: fill?.coin as string,
         error: data.error as string,
         success: false,
       };

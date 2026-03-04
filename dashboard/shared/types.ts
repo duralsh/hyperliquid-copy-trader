@@ -106,24 +106,13 @@ export interface WsMessage {
 }
 
 // My Account types
-export interface MyAccountPosition {
-  coin: string;
-  szi: string;
-  entryPx: string;
-  leverage: string;
-  liquidationPx: string;
-  marginUsed: string;
-  returnOnEquity: string;
-  unrealizedPnl: string;
-}
-
 export interface MyAccountData {
   address: string;
   accountValue: string;
   totalMarginUsed: string;
   totalNtlPos: string;
   totalRawUsd: string;
-  positions: MyAccountPosition[];
+  positions: TraderPosition[];
   totalUnrealizedPnl: number;
 }
 

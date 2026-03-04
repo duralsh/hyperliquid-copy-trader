@@ -11,10 +11,7 @@ import { logger } from "./logger.js";
 import { HyperliquidClientWrapper } from "./hyperliquidClient.js";
 import { CopyTrader } from "./copyTrader.js";
 import {
-  initTelegramBot,
-  cleanupTelegramBot,
   sendErrorNotification,
-  sendStartupNotification,
 } from "./notifications/arenaFeed.js";
 import { ErrorHandler } from "./utils/errors.js";
 
@@ -30,8 +27,6 @@ async function main(): Promise<void> {
       maxLeverage: copyTradingConfig.MAX_LEVERAGE,
       blockedAssets: copyTradingConfig.BLOCKED_ASSETS,
     });
-
-    await initTelegramBot();
 
     const client = new HyperliquidClientWrapper();
     await client.initialize();
@@ -54,15 +49,12 @@ async function main(): Promise<void> {
       throw error;
     }
 
-    await sendStartupNotification();
-
     const copyTrader = new CopyTrader(client, copyTradingConfig.COPY_TRADING_TARGET_WALLET);
     await copyTrader.start();
 
     const shutdown = async (signal: string) => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
       copyTrader.stop();
-      await cleanupTelegramBot();
       process.exit(0);
     };
 

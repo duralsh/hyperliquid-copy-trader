@@ -23,6 +23,10 @@ import type {
   TradeResult,
 } from "./types.js";
 
+const PNL_SETTLE_DELAY_MS = 2_000;
+const PNL_TIME_WINDOW_MS = 30_000;
+const RETRY_OPTS = { maxRetries: 3, initialDelay: 1_000, maxDelay: 10_000, backoffMultiplier: 2 } as const;
+
 export interface CopyTraderStatus {
   running: boolean;
   targetWallet: string;
@@ -113,7 +117,7 @@ export class CopyTrader extends EventEmitter {
               this.client.getAccountEquity(this.targetWallet),
             ]);
           },
-          { maxRetries: 3, initialDelay: 1000, maxDelay: 10000, backoffMultiplier: 2 },
+          RETRY_OPTS,
           (error, attempt) => {
             logger.warn(`Failed to fetch account equity (attempt ${attempt}/3)`, { error });
           }
@@ -149,7 +153,7 @@ export class CopyTrader extends EventEmitter {
               this.client.getPositions(this.targetWallet),
             ]);
           },
-          { maxRetries: 3, initialDelay: 1000, maxDelay: 10000, backoffMultiplier: 2 }
+          RETRY_OPTS,
         );
       } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
@@ -192,79 +196,7 @@ export class CopyTrader extends EventEmitter {
 
       const result = await this.executeTrade(tradeParams, fill.px, ourEquity);
 
-      if (result.success) {
-        loggerUtils.logTrade("info", "Trade executed successfully", {
-          orderId: result.orderId,
-          params: tradeParams,
-          fillHash: fill.hash,
-          coin: fill.coin,
-          action,
-        });
-
-        if (action === "open") {
-          this.activeTrades.add(fill.coin);
-        } else if (action === "close") {
-          this.activeTrades.delete(fill.coin);
-        }
-
-        this.emit("trade", { fill, params: tradeParams, result, action, timestamp: Date.now() });
-        this.emit("status", this.getStatus());
-
-        // For close trades, fetch our own wallet's PnL instead of using the target's.
-        // Wait for the fill to settle on Hyperliquid before querying.
-        let ourClosedPnl: string | undefined;
-        if (action === "close") {
-          try {
-            // Delay 2s so the fill is indexed by Hyperliquid's API
-            await new Promise((r) => setTimeout(r, 2000));
-
-            const ourFills = await retryWithBackoff(
-              () => this.client.getUserFills(this.ourAddress),
-              { maxRetries: 3, initialDelay: 2000, maxDelay: 10000, backoffMultiplier: 2 }
-            );
-
-            // Match by coin AND timestamp (within last 30 seconds)
-            const now = Date.now();
-            const TIME_WINDOW_MS = 30_000;
-            const recentCloseFills = ourFills.filter(
-              (f) =>
-                f.coin === fill.coin &&
-                f.dir.startsWith("Close") &&
-                now - f.time < TIME_WINDOW_MS
-            );
-
-            if (recentCloseFills.length > 0) {
-              // Sum closedPnl across all matching fills (a single close can produce multiple fills)
-              const totalPnl = recentCloseFills.reduce(
-                (sum, f) => sum + parseFloat(f.closedPnl || "0"),
-                0
-              );
-              ourClosedPnl = totalPnl.toFixed(4);
-              logger.info("Fetched our wallet's closedPnl", {
-                coin: fill.coin,
-                ourClosedPnl,
-                matchedFills: recentCloseFills.length,
-                targetClosedPnl: fill.closedPnl,
-              });
-            } else {
-              logger.warn("Could not find our close fill for PnL within time window", {
-                coin: fill.coin,
-                totalFills: ourFills.length,
-                closeFillsForCoin: ourFills.filter(
-                  (f) => f.coin === fill.coin && f.dir.startsWith("Close")
-                ).length,
-              });
-            }
-          } catch (error: unknown) {
-            logger.warn("Failed to fetch our PnL, falling back to target's", {
-              coin: fill.coin,
-              error: ErrorHandler.formatError(error),
-            });
-          }
-        }
-
-        await this.sendNotification(fill, tradeParams, result, ourClosedPnl);
-      } else {
+      if (!result.success) {
         loggerUtils.logTrade("error", "Trade execution failed", {
           error: result.error,
           params: tradeParams,
@@ -279,7 +211,33 @@ export class CopyTrader extends EventEmitter {
           }),
           {}
         );
+        return;
       }
+
+      loggerUtils.logTrade("info", "Trade executed successfully", {
+        orderId: result.orderId,
+        params: tradeParams,
+        fillHash: fill.hash,
+        coin: fill.coin,
+        action,
+      });
+
+      if (action === "open") {
+        this.activeTrades.add(fill.coin);
+      } else if (action === "close") {
+        this.activeTrades.delete(fill.coin);
+      }
+
+      this.emit("trade", { fill, params: tradeParams, result, action, timestamp: Date.now() });
+      this.emit("status", this.getStatus());
+
+      // For close trades, fetch our own wallet's PnL instead of using the target's.
+      // Wait for the fill to settle on Hyperliquid before querying.
+      const ourClosedPnl = action === "close"
+        ? await this.fetchOurClosedPnl(fill)
+        : undefined;
+
+      await this.sendNotification(fill, tradeParams, result, ourClosedPnl);
     } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
       logger.error("Error handling fill", { fill, ...formattedError });
@@ -385,12 +343,7 @@ export class CopyTrader extends EventEmitter {
             leverage: params.leverage,
           });
         },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-          backoffMultiplier: 2,
-        },
+        RETRY_OPTS,
         (error, attempt) => {
           logger.warn(`Trade execution attempt ${attempt}/3 failed`, {
             error: ErrorHandler.formatError(error),
@@ -413,6 +366,57 @@ export class CopyTrader extends EventEmitter {
         error: formattedError.message,
         params,
       };
+    }
+  }
+
+  private async fetchOurClosedPnl(fill: FillEvent): Promise<string | undefined> {
+    try {
+      // Delay so the fill is indexed by Hyperliquid's API
+      await new Promise((r) => setTimeout(r, PNL_SETTLE_DELAY_MS));
+
+      const ourFills = await retryWithBackoff(
+        () => this.client.getUserFills(this.ourAddress),
+        { ...RETRY_OPTS, initialDelay: PNL_SETTLE_DELAY_MS }
+      );
+
+      // Match by coin AND timestamp (within the time window)
+      const now = Date.now();
+      const recentCloseFills = ourFills.filter(
+        (f) =>
+          f.coin === fill.coin &&
+          f.dir.startsWith("Close") &&
+          now - f.time < PNL_TIME_WINDOW_MS
+      );
+
+      if (recentCloseFills.length > 0) {
+        const totalPnl = recentCloseFills.reduce(
+          (sum, f) => sum + parseFloat(f.closedPnl || "0"),
+          0
+        );
+        const pnl = totalPnl.toFixed(4);
+        logger.info("Fetched our wallet's closedPnl", {
+          coin: fill.coin,
+          ourClosedPnl: pnl,
+          matchedFills: recentCloseFills.length,
+          targetClosedPnl: fill.closedPnl,
+        });
+        return pnl;
+      }
+
+      logger.warn("Could not find our close fill for PnL within time window", {
+        coin: fill.coin,
+        totalFills: ourFills.length,
+        closeFillsForCoin: ourFills.filter(
+          (f) => f.coin === fill.coin && f.dir.startsWith("Close")
+        ).length,
+      });
+      return undefined;
+    } catch (error: unknown) {
+      logger.warn("Failed to fetch our PnL, falling back to target's", {
+        coin: fill.coin,
+        error: ErrorHandler.formatError(error),
+      });
+      return undefined;
     }
   }
 

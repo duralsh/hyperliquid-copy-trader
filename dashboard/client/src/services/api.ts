@@ -62,7 +62,6 @@ export function fetchLeaderboard(query: LeaderboardQuery = {}): Promise<Leaderbo
 export function lookupTraders(addresses: string[]): Promise<{ traders: TraderSummary[] }> {
   return fetchJSON(`${BASE}/leaderboard/lookup`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ addresses }),
   });
 }
@@ -78,7 +77,6 @@ export function fetchTraderFills(address: string): Promise<TraderFill[]> {
 export function startBot(config: BotConfig): Promise<BotStatus> {
   return fetchJSON(`${BASE}/bot/start`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
   });
 }
@@ -99,7 +97,6 @@ export function closeAllPositions(): Promise<CloseAllResult> {
 export function closePosition(coin: string): Promise<ClosePositionResult> {
   return fetchJSON(`${BASE}/account/close-position`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ coin }),
   });
 }
@@ -112,7 +109,6 @@ export function fetchArenaFeed(page = 1, pageSize = 20): Promise<ArenaFeedRespon
 export function createArenaPost(content: string): Promise<ArenaPost> {
   return fetchJSON(`${BASE}/arena/post`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   });
 }
@@ -142,7 +138,6 @@ export function fetchWalletBalances(): Promise<WalletBalances> {
 export function depositToHL(amount: number): Promise<DepositResult> {
   return fetchJSON(`${BASE}/wallet/deposit`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount }),
   });
 }
@@ -150,7 +145,6 @@ export function depositToHL(amount: number): Promise<DepositResult> {
 export function withdrawFromHL(amount: number): Promise<WithdrawResult> {
   return fetchJSON(`${BASE}/wallet/withdraw`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount }),
   });
 }
@@ -172,7 +166,6 @@ export interface AuthResponse {
 export function apiLogin(username: string, password: string): Promise<AuthResponse> {
   return fetchJSON(`${BASE}/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
 }
@@ -180,7 +173,6 @@ export function apiLogin(username: string, password: string): Promise<AuthRespon
 export function apiRegister(username: string, password: string): Promise<AuthResponse> {
   return fetchJSON(`${BASE}/auth/register`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
 }
@@ -201,7 +193,6 @@ export function apiRegisterAgent(
 }> {
   return fetchJSON(`${BASE}/auth/onboard/register-agent`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ privateKey, agentName, agentHandle }),
   });
 }
@@ -212,7 +203,6 @@ export function apiCompleteOnboarding(
 ): Promise<{ user: AuthUser; walletAddress: string }> {
   return fetchJSON(`${BASE}/auth/onboard/complete`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ privateKey, arenaApiKey }),
   });
 }

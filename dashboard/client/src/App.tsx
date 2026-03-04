@@ -94,7 +94,7 @@ function Dashboard() {
             <LeaderboardTable
               onSelectTrader={setSelectedTrader}
               selectedAddress={selectedTrader?.address}
-              favoriteTraders={favoriteTraders()}
+              favoriteTraders={favoriteTraders}
               isFavorite={isFavorite}
               toggleFavorite={toggleFavorite}
               refreshFavorites={refreshFavorites}

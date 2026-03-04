@@ -18,25 +18,25 @@ export async function getPositions(
     );
   }
 
-  // Query all known DEXs and aggregate positions
-  const allPositions: HlAssetPosition[] = [];
-  
-  for (const dex of KNOWN_DEXES) {
-    try {
-      const state = await hyperliquidClient().getClearinghouseState(
+  // Query all known DEXs in parallel and aggregate positions
+  const results = await Promise.allSettled(
+    KNOWN_DEXES.map((dex) =>
+      hyperliquidClient().getClearinghouseState(
         walletAddress,
         dex === "" ? undefined : dex
-      );
-      
-      const positions = state.assetPositions.filter(
+      )
+    )
+  );
+
+  const allPositions: HlAssetPosition[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      const positions = result.value.assetPositions.filter(
         (ap) => parseFloat(ap.position.szi) !== 0
       );
-      
       allPositions.push(...positions);
-    } catch (error) {
-      // Silently skip DEXs that error (user might not have positions there)
-      continue;
     }
+    // Silently skip DEXs that error (user might not have positions there)
   }
 
   return allPositions;
@@ -68,22 +68,23 @@ export async function getOpenOrders(
     );
   }
   
-  // Query all known DEXs and aggregate orders
-  const allOrders: HlOpenOrder[] = [];
-  
-  for (const dex of KNOWN_DEXES) {
-    try {
-      const orders = await hyperliquidClient().getOpenOrders(
+  // Query all known DEXs in parallel and aggregate orders
+  const results = await Promise.allSettled(
+    KNOWN_DEXES.map((dex) =>
+      hyperliquidClient().getOpenOrders(
         walletAddress,
         dex === "" ? undefined : dex
-      );
-      
-      allOrders.push(...orders);
-    } catch (error) {
-      // Silently skip DEXs that error
-      continue;
+      )
+    )
+  );
+
+  const allOrders: HlOpenOrder[] = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      allOrders.push(...result.value);
     }
+    // Silently skip DEXs that error
   }
-  
+
   return allOrders;
 }

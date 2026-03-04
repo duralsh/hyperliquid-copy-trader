@@ -64,8 +64,8 @@ export class HyperliquidClientWrapper {
         totalMarginUsed: ms.totalMarginUsed ?? "0",
         totalNtlPos: ms.totalNtlPos ?? "0",
         totalRawUsd: ms.totalRawUsd ?? "0",
-        crossMaintenanceMarginUsed: ms.crossMaintenanceMarginUsed ?? "0",
-        crossMarginSummary: (ms.crossMarginSummary as Record<string, unknown>) ?? {},
+        crossMaintenanceMarginUsed: state.crossMaintenanceMarginUsed ?? "0",
+        crossMarginSummary: (state.crossMarginSummary as Record<string, unknown>) ?? {},
       };
     } catch (error: unknown) {
       const formattedError = ErrorHandler.formatError(error);
@@ -196,12 +196,6 @@ export class HyperliquidClientWrapper {
         leverage: params.leverage,
         price,
       });
-      
-      // Log the response for debugging
-      logger.info("Arena placeOrder response", { 
-        response: JSON.stringify(res, null, 2).substring(0, 1000) 
-      });
-      
       const oid = this.extractOrderId(res);
       if (!oid) throw new TradingError("Order placed but no order ID returned", true, { params });
 
@@ -226,54 +220,50 @@ export class HyperliquidClientWrapper {
   }
 
   private extractOrderId(res: unknown): number | undefined {
-    // Log with full depth to see nested structure (using info level so it shows)
-    logger.info("Extracting order ID from Arena response", { 
-      responsePreview: JSON.stringify(res, null, 2).substring(0, 800)
-    });
-    
-    const r = res as any;
-    
+    // Helper to safely traverse nested objects
+    const dig = (obj: unknown, ...keys: string[]): unknown => {
+      let current: unknown = obj;
+      for (const key of keys) {
+        if (current == null || typeof current !== "object") return undefined;
+        current = (current as Record<string, unknown>)[key];
+      }
+      return current;
+    };
+
     // Arena API returns an array: [{ status: 'ok', response: {...} }]
-    if (Array.isArray(r) && r.length > 0) {
-      const firstResult = r[0];
-      
-      // Check if it's a successful response
-      if (firstResult.status === 'ok' && firstResult.response) {
+    if (Array.isArray(res) && res.length > 0) {
+      const firstResult = res[0] as Record<string, unknown>;
+
+      if (firstResult.status === "ok" && firstResult.response) {
         const responseData = firstResult.response;
-        
+
         // Try: response.data.statuses[0].filled.oid
-        if (responseData.data?.statuses?.[0]?.filled?.oid) {
-          return responseData.data.statuses[0].filled.oid;
-        }
-        
+        const oid1 = dig(responseData, "data", "statuses", "0", "filled", "oid");
+        if (typeof oid1 === "number") return oid1;
+
         // Try: response.statuses[0].filled.oid
-        if (responseData.statuses?.[0]?.filled?.oid) {
-          return responseData.statuses[0].filled.oid;
-        }
-        
+        const oid2 = dig(responseData, "statuses", "0", "filled", "oid");
+        if (typeof oid2 === "number") return oid2;
+
         // Try: response.oid
-        if (responseData.oid) {
-          return responseData.oid;
-        }
-        
+        const oid3 = dig(responseData, "oid");
+        if (typeof oid3 === "number") return oid3;
+
         // For market orders that fill immediately, try other paths
-        if (responseData.data?.oid) {
-          return responseData.data.oid;
-        }
+        const oid4 = dig(responseData, "data", "oid");
+        if (typeof oid4 === "number") return oid4;
       }
     }
-    
+
     // Fallback to old logic for non-array responses
-    if (r?.response?.data?.statuses?.[0]?.filled?.oid) {
-      return r.response.data.statuses[0].filled.oid;
-    }
-    
-    if (r?.data?.statuses?.[0]?.filled?.oid) {
-      return r.data.statuses[0].filled.oid;
-    }
-    
-    logger.warn("Could not extract order ID from response", { 
-      response: JSON.stringify(res, null, 2).substring(0, 500) 
+    const oid5 = dig(res, "response", "data", "statuses", "0", "filled", "oid");
+    if (typeof oid5 === "number") return oid5;
+
+    const oid6 = dig(res, "data", "statuses", "0", "filled", "oid");
+    if (typeof oid6 === "number") return oid6;
+
+    logger.warn("Could not extract order ID from response", {
+      response: JSON.stringify(res, null, 2).substring(0, 500),
     });
     return undefined;
   }

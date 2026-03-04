@@ -5,7 +5,6 @@ interface HlMarketSnapshot {
   coin: string;
   markPx: string;
   midPx?: string;
-  [key: string]: unknown;
 }
 
 export class HyperliquidClient {
@@ -70,7 +69,7 @@ export class HyperliquidClient {
     
     // Convert object format to array
     // The API returns { "BTC": "95000.0", "ETH": "3500.0", ... }
-    const markets = Object.entries(result).map(([coin, priceData]: [string, any]) => {
+    const markets = Object.entries(result).map(([coin, priceData]: [string, unknown]) => {
       // If priceData is a string, use it directly as the price
       if (typeof priceData === "string") {
         return {
@@ -79,13 +78,13 @@ export class HyperliquidClient {
           markPx: priceData,
         };
       }
-      
+
       // If it's an object with nested price fields
+      const pd = priceData as Record<string, unknown> | null;
       return {
         coin,
-        markPx: priceData?.markPx ?? priceData?.px ?? "0",
-        midPx: priceData?.midPx ?? priceData?.px ?? priceData?.markPx ?? "0",
-        ...priceData,
+        markPx: String(pd?.markPx ?? pd?.px ?? "0"),
+        midPx: String(pd?.midPx ?? pd?.px ?? pd?.markPx ?? "0"),
       };
     });
     
@@ -115,23 +114,25 @@ export class HyperliquidClient {
 
   async getXyzMarketPrice(symbol: string): Promise<number> {
     // For XYZ markets, we need to query metaAndAssetCtxs with dex: "xyz"
-    const meta = await this.post<any>({
+    interface XyzMarket { name?: string }
+    interface XyzAssetCtx { midPx?: string; markPx?: string }
+    const meta = await this.post<[{ universe?: XyzMarket[] }, XyzAssetCtx[]]>({
       type: "metaAndAssetCtxs",
       dex: "xyz", // XYZ DEX
     });
-    
+
     // The universe is at meta[0].universe, already includes xyz: prefix
-    const universe = meta[0]?.universe || [];
-    const marketIndex = universe.findIndex((m: any) => m.name === symbol);
-    
+    const universe = meta[0]?.universe ?? [];
+    const marketIndex = universe.findIndex((m) => m.name === symbol);
+
     if (marketIndex === -1) {
       throw new Error(
-        `XYZ market not found: ${symbol}. Available: ${universe.slice(0, 10).map((m: any) => m.name).join(", ")}...`
+        `XYZ market not found: ${symbol}. Available: ${universe.slice(0, 10).map((m) => m.name).join(", ")}...`
       );
     }
-    
+
     // Get the market price from assetCtxs (second element)
-    const assetCtxs = meta[1] || [];
+    const assetCtxs = meta[1] ?? [];
     const assetCtx = assetCtxs[marketIndex];
     if (!assetCtx) {
       throw new Error(`No price data available for ${symbol}`);

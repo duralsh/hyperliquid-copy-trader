@@ -130,7 +130,3 @@ export function getLogBuffer(): DockerLogEntry[] {
 export function onLine(cb: (entry: DockerLogEntry) => void) {
   emitter.on("line", cb);
 }
-
-export function offLine(cb: (entry: DockerLogEntry) => void) {
-  emitter.off("line", cb);
-}
