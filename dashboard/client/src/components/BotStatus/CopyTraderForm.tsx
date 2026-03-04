@@ -35,8 +35,8 @@ function Label({ text, hint }: { text: string; hint: string }) {
 export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) {
   const [targetWallet, setTargetWallet] = useState(initialConfig.targetWallet ?? "");
   const [sizeMultiplier, setSizeMultiplier] = useState(String(initialConfig.sizeMultiplier ?? 1.0));
-  const [maxLeverage, setMaxLeverage] = useState(String(initialConfig.maxLeverage ?? 20));
-  const [maxPositionSizePercent, setMaxPositionSizePercent] = useState(String(initialConfig.maxPositionSizePercent ?? 50));
+  const [maxLeverage, setMaxLeverage] = useState(String(initialConfig.maxLeverage ?? 40));
+  const [maxPositionSizePercent, setMaxPositionSizePercent] = useState(String(initialConfig.maxPositionSizePercent ?? 100));
   const [blockedAssets, setBlockedAssets] = useState("");
   const [dryRun, setDryRun] = useState(initialConfig.dryRun ?? false);
   const startBot = useStartBot();
@@ -46,8 +46,8 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
     const config: BotConfig = {
       targetWallet,
       sizeMultiplier: parseFloat(sizeMultiplier) || 1.0,
-      maxLeverage: parseInt(maxLeverage) || 20,
-      maxPositionSizePercent: parseInt(maxPositionSizePercent) || 50,
+      maxLeverage: parseInt(maxLeverage) || 40,
+      maxPositionSizePercent: parseInt(maxPositionSizePercent) || 100,
       blockedAssets: blockedAssets
         .split(",")
         .map((s) => s.trim().toUpperCase())

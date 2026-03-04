@@ -14,8 +14,8 @@ router.post("/start", asyncHandler("Bot start", async (req, res) => {
   const config: BotConfig = {
     targetWallet: body.targetWallet,
     sizeMultiplier: body.sizeMultiplier ?? 1.0,
-    maxLeverage: body.maxLeverage ?? 20,
-    maxPositionSizePercent: body.maxPositionSizePercent ?? 50,
+    maxLeverage: body.maxLeverage ?? 40,
+    maxPositionSizePercent: body.maxPositionSizePercent ?? 100,
     blockedAssets: body.blockedAssets ?? [],
     dryRun: body.dryRun ?? false,
   };
