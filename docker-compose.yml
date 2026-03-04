@@ -1,19 +1,6 @@
 version: '3.8'
 
 services:
-  arena-copy-trader:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: arena-copy-trader
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - NODE_ENV=production
-    profiles:
-      - cli
-
   dashboard:
     build:
       context: .
@@ -28,5 +15,3 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-    profiles:
-      - dashboard

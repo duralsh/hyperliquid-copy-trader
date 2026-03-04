@@ -36,7 +36,7 @@ ADMIN_PASSWORD=<strong_password>
 mkdir -p data
 
 # Build and run
-docker compose --profile dashboard up -d --build
+docker compose up -d --build
 
 # Verify
 docker logs -f hl-trader-dashboard
@@ -88,12 +88,5 @@ sudo ufw allow 443/tcp
 ```bash
 cd hyperliquid-copy-trader
 git pull
-docker compose --profile dashboard up -d --build
-```
-
-## Standalone Copy Trader (CLI only, no dashboard)
-
-```bash
-docker compose --profile cli up -d --build
-docker logs -f arena-copy-trader
+docker compose up -d --build
 ```
