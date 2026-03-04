@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchTraderPositions, fetchTraderFills } from "../../services/api.js";
+import { fetchTraderPositions, fetchTraderFills, lookupTraders } from "../../services/api.js";
 import { formatUSD, formatPnl, shortenAddress, formatTimeAgo } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
 import { StarButton } from "../StarButton.js";
@@ -55,6 +55,16 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
     queryFn: () => fetchTraderFills(trader.address),
   });
 
+  const { data: lookupData } = useQuery({
+    queryKey: ["traderLookup", trader.address],
+    queryFn: async () => {
+      const result = await lookupTraders([trader.address]);
+      return result.traders[0] ?? null;
+    },
+    enabled: trader.accountValue === 0,
+  });
+  const resolved = lookupData ?? trader;
+
   return (
     <div className="fixed inset-y-0 right-0 w-[500px] bg-bg-secondary border-l border-border shadow-2xl z-50 flex flex-col overflow-hidden">
       {/* Header */}
@@ -65,7 +75,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
           </div>
           <div className="text-amber text-lg mt-1 flex items-center gap-1.5">
             <StarButton active={isFavorite} onClick={onToggleFavorite} />
-            {trader.displayName || shortenAddress(trader.address)}
+            {resolved.displayName || shortenAddress(trader.address)}
             <CopyButton text={trader.address} />
           </div>
           <div className="text-text-dim text-xs font-mono flex items-center gap-1.5">
@@ -88,7 +98,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
         <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
             <div className="text-text-dim">ACCOUNT VALUE</div>
-            <div className="text-green text-lg tabular-nums">{formatUSD(trader.accountValue)}</div>
+            <div className="text-green text-lg tabular-nums">{formatUSD(data ? parseFloat(data.accountValue) : resolved.accountValue)}</div>
           </div>
           {data && (
             <>
@@ -100,14 +110,14 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
           )}
           <div>
             <div className="text-text-dim">ALL-TIME PNL</div>
-            <div className={`text-lg tabular-nums ${trader.pnl.allTime >= 0 ? "text-green" : "text-red"}`}>
-              {formatPnl(trader.pnl.allTime)}
+            <div className={`text-lg tabular-nums ${resolved.pnl.allTime >= 0 ? "text-green" : "text-red"}`}>
+              {formatPnl(resolved.pnl.allTime)}
             </div>
           </div>
           <div>
             <div className="text-text-dim">MONTH PNL</div>
-            <div className={`text-lg tabular-nums ${trader.pnl.month >= 0 ? "text-green" : "text-red"}`}>
-              {formatPnl(trader.pnl.month)}
+            <div className={`text-lg tabular-nums ${resolved.pnl.month >= 0 ? "text-green" : "text-red"}`}>
+              {formatPnl(resolved.pnl.month)}
             </div>
           </div>
         </div>
