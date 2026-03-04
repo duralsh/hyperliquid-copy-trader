@@ -26,7 +26,7 @@ import { resolveCredentials } from "./middleware/resolveCredentials.js";
 import { bootstrapAdmin } from "./services/db.js";
 import { botManager } from "./services/botManager.js";
 import { startLogStream, onLine, getLogBuffer } from "./services/dockerLogService.js";
-const PORT = parseInt(process.env.DASHBOARD_PORT ?? "3001", 10);
+const PORT = 3002;
 
 const app = express();
 app.use(cors());
@@ -86,22 +86,12 @@ function broadcastToUser(userId: number, event: string, data: unknown) {
 }
 
 // Forward bot events to WebSocket clients (per-user)
-botManager.on("bot:status", (data: { userId: number } & Record<string, unknown>) => {
-  const { userId, ...rest } = data;
-  broadcastToUser(userId, "bot:status", rest);
-});
-botManager.on("bot:trade", (data: { userId: number } & Record<string, unknown>) => {
-  const { userId, ...rest } = data;
-  broadcastToUser(userId, "bot:trade", rest);
-});
-botManager.on("bot:error", (data: { userId: number } & Record<string, unknown>) => {
-  const { userId, ...rest } = data;
-  broadcastToUser(userId, "bot:error", rest);
-});
-botManager.on("bot:switching", (data: { userId: number } & Record<string, unknown>) => {
-  const { userId, ...rest } = data;
-  broadcastToUser(userId, "bot:switching", rest);
-});
+for (const event of ["bot:status", "bot:trade", "bot:error", "bot:switching"] as const) {
+  botManager.on(event, (data: { userId: number } & Record<string, unknown>) => {
+    const { userId, ...rest } = data;
+    broadcastToUser(userId, event, rest);
+  });
+}
 
 // Forward docker log lines to WebSocket clients (broadcast to all)
 onLine((entry) => broadcast("docker:log", entry));

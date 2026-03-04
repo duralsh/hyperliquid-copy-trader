@@ -29,7 +29,6 @@ ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
 APP_SECRET=<run: openssl rand -hex 32>
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=<strong_password>
-DASHBOARD_PORT=3001
 ```
 
 ```bash
@@ -43,26 +42,7 @@ docker compose --profile dashboard up -d --build
 docker logs -f hl-trader-dashboard
 ```
 
-Dashboard available at `http://<your-vps-ip>:3001`
-
-## Custom Port
-
-Change the port in `.env` and `docker-compose.yml`:
-
-```bash
-# .env
-DASHBOARD_PORT=8420
-
-# docker-compose.yml — update the ports mapping:
-#   ports:
-#     - "${DASHBOARD_PORT:-3001}:3001"
-```
-
-Or override directly:
-
-```bash
-DASHBOARD_PORT=8420 docker compose --profile dashboard up -d --build
-```
+Dashboard available at `http://<your-vps-ip>:3002`
 
 ## Reverse Proxy (Nginx)
 
@@ -74,7 +54,7 @@ server {
     server_name trader.yourdomain.com;
 
     location / {
-        proxy_pass http://127.0.0.1:3001;
+        proxy_pass http://127.0.0.1:3002;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -96,7 +76,7 @@ sudo certbot --nginx -d trader.yourdomain.com
 
 ```bash
 # If exposing the port directly (no reverse proxy)
-sudo ufw allow 3001/tcp
+sudo ufw allow 3002/tcp
 
 # If using Nginx reverse proxy, only open 80/443
 sudo ufw allow 80/tcp
