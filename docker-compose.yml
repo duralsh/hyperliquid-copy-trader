@@ -21,7 +21,7 @@ services:
     container_name: hl-trader-dashboard
     restart: unless-stopped
     ports:
-      - "${DASHBOARD_PORT:-3001}:3001"
+      - "${DASHBOARD_PORT:-3002}:3001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     env_file:
