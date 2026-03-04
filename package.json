@@ -11,7 +11,9 @@
     "dashboard:server": "cd dashboard/server && npm run dev",
     "dashboard:client": "cd dashboard/client && npx vite --port 5173",
     "dashboard:dev": "cd dashboard/server && npm run dev",
-    "dashboard:build": "cd dashboard/client && npx vite build && cd ../server && npm run build"
+    "dashboard:build": "cd dashboard/client && npx vite build && cd ../server && npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@inquirer/prompts": "^8.3.0",
@@ -24,6 +26,7 @@
     "@types/node": "^22.10.2",
     "@types/ws": "^8.18.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
   }
 }
