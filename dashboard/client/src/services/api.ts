@@ -20,8 +20,26 @@ import type {
 
 const BASE = "/api";
 
+function getAuthToken(): string | null {
+  return localStorage.getItem("hl-auth-token");
+}
+
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const token = getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  if (!headers.has("Content-Type") && init?.body) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await fetch(url, { ...init, headers });
+  if (res.status === 401) {
+    localStorage.removeItem("hl-auth-token");
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error ?? `Request failed: ${res.status}`);
@@ -135,4 +153,78 @@ export function withdrawFromHL(amount: number): Promise<WithdrawResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount }),
   });
+}
+
+// Auth
+export interface AuthUser {
+  id: number;
+  username: string;
+  role: string;
+  walletAddress: string | null;
+  onboarded: boolean;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export function apiLogin(username: string, password: string): Promise<AuthResponse> {
+  return fetchJSON(`${BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function apiRegister(username: string, password: string): Promise<AuthResponse> {
+  return fetchJSON(`${BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export function apiGetMe(): Promise<{ user: AuthUser }> {
+  return fetchJSON(`${BASE}/auth/me`);
+}
+
+export function apiRegisterAgent(
+  privateKey: string,
+  agentName: string,
+  agentHandle: string,
+): Promise<{
+  agentId: string;
+  apiKey: string;
+  verificationCode: string;
+  walletAddress: string;
+}> {
+  return fetchJSON(`${BASE}/auth/onboard/register-agent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ privateKey, agentName, agentHandle }),
+  });
+}
+
+export function apiCompleteOnboarding(
+  privateKey: string,
+  arenaApiKey: string,
+): Promise<{ user: AuthUser; walletAddress: string }> {
+  return fetchJSON(`${BASE}/auth/onboard/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ privateKey, arenaApiKey }),
+  });
+}
+
+export function apiFetchFavorites(): Promise<{ favorites: string[] }> {
+  return fetchJSON(`${BASE}/favorites`);
+}
+
+export function apiAddFavorite(address: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${BASE}/favorites/${address}`, { method: "POST" });
+}
+
+export function apiRemoveFavorite(address: string): Promise<{ success: boolean }> {
+  return fetchJSON(`${BASE}/favorites/${address}`, { method: "DELETE" });
 }

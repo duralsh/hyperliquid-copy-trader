@@ -19,7 +19,8 @@ export function useWebSocket() {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const token = localStorage.getItem("hl-auth-token");
+    const wsUrl = `${protocol}//${window.location.host}/ws${token ? `?token=${token}` : ""}`;
     const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {

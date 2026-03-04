@@ -72,13 +72,13 @@ function buildResult(trader: TraderSummary, userEquity: number): SmartFilterTrad
 // Public API
 // ---------------------------------------------------------------------------
 
-export async function runSmartFilter(refresh?: boolean): Promise<SmartFilterResponse> {
+export async function runSmartFilter(refresh?: boolean, walletAddress?: string): Promise<SmartFilterResponse> {
   if (!refresh && cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
     return cache.data;
   }
 
   // Only 2 calls — both already cached by their own services
-  const [account, leaderboard] = await Promise.all([fetchMyAccount(), fetchLeaderboard()]);
+  const [account, leaderboard] = await Promise.all([fetchMyAccount(walletAddress), fetchLeaderboard()]);
   const userEquity = parseFloat(account.accountValue) || 0;
 
   // Pre-filter: right account size range + positive PnL

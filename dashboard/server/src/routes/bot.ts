@@ -19,7 +19,7 @@ router.post("/start", async (req, res) => {
       blockedAssets: body.blockedAssets ?? [],
       dryRun: body.dryRun ?? false,
     };
-    const status = await botManager.start(config);
+    const status = await botManager.start(config, req.user?.userId, req.userContext);
     res.json(status);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to start bot";
@@ -28,9 +28,9 @@ router.post("/start", async (req, res) => {
   }
 });
 
-router.post("/stop", async (_req, res) => {
+router.post("/stop", async (req, res) => {
   try {
-    const status = await botManager.stop();
+    const status = await botManager.stop(req.user?.userId);
     res.json(status);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to stop bot";
@@ -39,12 +39,12 @@ router.post("/stop", async (_req, res) => {
   }
 });
 
-router.get("/status", (_req, res) => {
-  res.json(botManager.getStatus());
+router.get("/status", (req, res) => {
+  res.json(botManager.getStatus(req.user?.userId));
 });
 
-router.get("/trades", (_req, res) => {
-  res.json(botManager.getTradeHistory());
+router.get("/trades", (req, res) => {
+  res.json(botManager.getTradeHistory(req.user?.userId));
 });
 
 export default router;

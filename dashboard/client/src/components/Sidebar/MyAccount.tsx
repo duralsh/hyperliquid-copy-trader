@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMyAccount } from "../../hooks/useMyAccount.js";
-import { formatUSD, formatPnl, shortenAddress } from "../../utils/format.js";
+import { formatUSD, formatPnl, formatTimeAgo, shortenAddress } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
-import { closeAllPositions, closePosition } from "../../services/api.js";
+import { closeAllPositions, closePosition, fetchTraderFills } from "../../services/api.js";
 import { depositToHL, withdrawFromHL } from "../../services/api.js";
 import { useWalletBalances } from "../../hooks/useWalletBalances.js";
 import type { BotStatus } from "../../../../shared/types.js";
@@ -278,6 +278,84 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
   );
 }
 
+function TradingHistory({ address }: { address: string }) {
+  const { data: fills, isLoading, error } = useQuery({
+    queryKey: ["myFills", address],
+    queryFn: () => fetchTraderFills(address),
+    refetchInterval: 30_000,
+  });
+
+  return (
+    <div className="border-t border-border/30 pt-3">
+      <div className="text-text-dim text-xs uppercase tracking-wider mb-3">
+        Recent Trades {fills ? `(${fills.length})` : ""}
+      </div>
+
+      {isLoading && (
+        <div className="text-green text-xs text-center py-3">
+          loading<span className="cursor-blink">_</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="text-red text-xs py-2">
+          ERR: {(error as Error).message}
+        </div>
+      )}
+
+      {fills && fills.length === 0 && (
+        <div className="text-text-dim text-xs text-center py-3">
+          no recent trades
+        </div>
+      )}
+
+      {fills && fills.length > 0 && (
+        <div className="space-y-1">
+          {fills.map((fill, i) => {
+            const isBuy = fill.side === "B";
+            const closedPnl = parseFloat(fill.closedPnl);
+            const isClose = fill.dir.startsWith("Close");
+            const dirLabel = fill.dir
+              .replace("Open ", "O/")
+              .replace("Close ", "C/");
+
+            return (
+              <div
+                key={fill.hash + i}
+                className="flex items-center justify-between py-1 text-xs group"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-amber font-bold">{fill.coin}</span>
+                  <span className={isBuy ? "text-green" : "text-red"}>
+                    {dirLabel}
+                  </span>
+                  <span className="text-text-dim tabular-nums">
+                    {parseFloat(fill.sz).toFixed(4)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {isClose ? (
+                    <span className={`tabular-nums font-bold ${closedPnl >= 0 ? "text-green" : "text-red"}`}>
+                      {formatPnl(closedPnl)}
+                    </span>
+                  ) : (
+                    <span className="text-text-dim tabular-nums">
+                      ${parseFloat(fill.px).toFixed(2)}
+                    </span>
+                  )}
+                  <span className="text-text-dim/60 tabular-nums text-[10px]">
+                    {formatTimeAgo(fill.time)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface MyAccountProps {
   botStatus: BotStatus | null;
   onViewTrader: (address: string) => void;
@@ -531,6 +609,9 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
                 )}
               </div>
             )}
+
+            {/* Trading History */}
+            <TradingHistory address={data.address} />
           </>
         )}
       </div>

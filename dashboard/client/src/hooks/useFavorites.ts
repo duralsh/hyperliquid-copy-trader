@@ -1,67 +1,63 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { lookupTraders } from "../services/api.js";
+import { lookupTraders, apiFetchFavorites, apiAddFavorite, apiRemoveFavorite } from "../services/api.js";
 import type { TraderSummary } from "../../../shared/types.js";
 
-const STORAGE_KEY = "hl-trader-favorites";
-
-function loadFavorites(): Map<string, TraderSummary> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Map();
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Map();
-    // Handle old format: plain string array of addresses
-    if (parsed.length > 0 && typeof parsed[0] === "string") {
-      const m = new Map<string, TraderSummary>();
-      for (const addr of parsed as string[]) {
-        const key = addr.toLowerCase();
-        m.set(key, {
-          rank: 0, address: addr, accountValue: 0, displayName: null,
-          pnl: { day: 0, week: 0, month: 0, allTime: 0 },
-          roi: { day: 0, week: 0, month: 0, allTime: 0 },
-          volume: { day: 0, week: 0, month: 0, allTime: 0 },
-        });
-      }
-      return m;
-    }
-    // New format: array of [key, TraderSummary] entries
-    return new Map(
-      (parsed as [string, TraderSummary][]).map(([k, v]) => [k.toLowerCase(), v])
-    );
-  } catch {
-    return new Map();
-  }
+function isAuthenticated(): boolean {
+  return !!localStorage.getItem("hl-auth-token");
 }
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<Map<string, TraderSummary>>(loadFavorites);
+  const [favorites, setFavorites] = useState<Map<string, TraderSummary>>(new Map());
   const didFetch = useRef(false);
 
-  // Persist to localStorage
+  // Load favorites from server on mount (if authenticated)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...favorites.entries()]));
-  }, [favorites]);
-
-  // Fetch fresh data for favorited addresses on mount
-  useEffect(() => {
-    if (didFetch.current || favorites.size === 0) return;
+    if (didFetch.current || !isAuthenticated()) return;
     didFetch.current = true;
-    const addresses = [...favorites.keys()];
-    lookupTraders(addresses)
-      .then(({ traders }) => {
-        if (traders.length > 0) refreshFavorites(traders);
+
+    apiFetchFavorites()
+      .then(({ favorites: addrs }) => {
+        if (addrs.length === 0) return;
+        const m = new Map<string, TraderSummary>();
+        for (const addr of addrs) {
+          m.set(addr.toLowerCase(), {
+            rank: 0, address: addr, accountValue: 0, displayName: null,
+            pnl: { day: 0, week: 0, month: 0, allTime: 0 },
+            roi: { day: 0, week: 0, month: 0, allTime: 0 },
+            volume: { day: 0, week: 0, month: 0, allTime: 0 },
+          });
+        }
+        setFavorites(m);
+        // Fetch fresh data
+        return lookupTraders(addrs);
+      })
+      .then((result) => {
+        if (result && result.traders.length > 0) {
+          setFavorites((prev) => {
+            const next = new Map(prev);
+            for (const t of result.traders) {
+              const key = t.address.toLowerCase();
+              if (next.has(key)) next.set(key, t);
+            }
+            return next;
+          });
+        }
       })
       .catch(() => {}); // stale data is fine as fallback
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleFavorite = useCallback((address: string, trader?: TraderSummary) => {
+    if (!isAuthenticated()) return;
+
+    const key = address.toLowerCase();
     setFavorites((prev) => {
       const next = new Map(prev);
-      const key = address.toLowerCase();
       if (next.has(key)) {
         next.delete(key);
+        apiRemoveFavorite(address).catch(() => {});
       } else if (trader) {
         next.set(key, trader);
+        apiAddFavorite(address).catch(() => {});
       }
       return next;
     });
@@ -74,6 +70,7 @@ export function useFavorites() {
 
   const refreshFavorites = useCallback((traders: TraderSummary[]) => {
     setFavorites((prev) => {
+      if (prev.size === 0) return prev;
       let changed = false;
       const next = new Map(prev);
       for (const t of traders) {

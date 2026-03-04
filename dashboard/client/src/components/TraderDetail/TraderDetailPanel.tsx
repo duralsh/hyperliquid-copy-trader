@@ -14,6 +14,7 @@ interface Props {
   activeCopyTarget: string | null;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  isAuthenticated?: boolean;
 }
 
 function StopCopyButton() {
@@ -43,7 +44,7 @@ function StopCopyButton() {
   );
 }
 
-export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, isFavorite, onToggleFavorite }: Props) {
+export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, isFavorite, onToggleFavorite, isAuthenticated = true }: Props) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["traderDetail", trader.address],
     queryFn: () => fetchTraderPositions(trader.address),
@@ -114,7 +115,11 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
 
       {/* Copy button */}
       <div className="px-4 pt-4 pb-2">
-        {activeCopyTarget?.toLowerCase() === trader.address.toLowerCase() ? (
+        {!isAuthenticated ? (
+          <div className="w-full py-3 text-center text-text-dim text-sm border border-border/50 rounded">
+            Login to copy trade
+          </div>
+        ) : activeCopyTarget?.toLowerCase() === trader.address.toLowerCase() ? (
           <StopCopyButton />
         ) : (
           <button

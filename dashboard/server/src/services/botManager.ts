@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import type { BotStatus, BotConfig, BotTradeEvent, BotSwitchingEvent } from "../../../shared/types.js";
+import type { UserContext } from "./userContext.js";
 
 // These will be lazily imported to avoid loading copy trading deps at module level
 let CopyTraderClass: typeof import("../../../../src/copytrading/copyTrader.js").CopyTrader | null = null;
@@ -18,64 +19,59 @@ async function loadCopyTrading() {
 
 const MAX_TRADE_HISTORY = 100;
 
+interface BotInstance {
+  copyTrader: InstanceType<typeof import("../../../../src/copytrading/copyTrader.js").CopyTrader>;
+  hlClient: InstanceType<typeof import("../../../../src/copytrading/hyperliquidClient.js").HyperliquidClientWrapper>;
+  config: BotConfig;
+  tradeHistory: BotTradeEvent[];
+  startedAt: number;
+}
+
 class BotManager extends EventEmitter {
-  private copyTrader: InstanceType<typeof import("../../../../src/copytrading/copyTrader.js").CopyTrader> | null = null;
-  private hlClient: InstanceType<typeof import("../../../../src/copytrading/hyperliquidClient.js").HyperliquidClientWrapper> | null = null;
-  private config: BotConfig | null = null;
-  private tradeHistory: BotTradeEvent[] = [];
-  private startedAt: number | null = null;
+  private instances = new Map<number, BotInstance>();
 
-  getStatus(): BotStatus {
-    if (!this.copyTrader) {
-      return {
-        running: false,
-        targetWallet: null,
-        activeTradesCount: 0,
-        activeTrades: [],
-        wsConnected: false,
-        startedAt: null,
-        config: null,
-      };
+  getStatus(userId?: number): BotStatus {
+    if (userId === undefined) {
+      // Legacy: return first instance status or stopped
+      const first = this.instances.values().next().value as BotInstance | undefined;
+      if (!first) return this._emptyStatus();
+      return this._instanceStatus(first);
     }
-
-    const status = this.copyTrader.getStatus();
-    return {
-      running: status.running,
-      targetWallet: status.targetWallet,
-      activeTradesCount: status.activeTradesCount,
-      activeTrades: status.activeTrades,
-      wsConnected: status.wsConnected,
-      startedAt: this.startedAt,
-      config: this.config,
-    };
+    const instance = this.instances.get(userId);
+    if (!instance) return this._emptyStatus();
+    return this._instanceStatus(instance);
   }
 
-  getTradeHistory(): BotTradeEvent[] {
-    return this.tradeHistory;
+  getTradeHistory(userId?: number): BotTradeEvent[] {
+    if (userId === undefined) {
+      const first = this.instances.values().next().value as BotInstance | undefined;
+      return first?.tradeHistory ?? [];
+    }
+    return this.instances.get(userId)?.tradeHistory ?? [];
   }
 
-  async start(config: BotConfig): Promise<BotStatus> {
-    if (this.copyTrader) {
-      // Auto-switch: stop old bot, close positions, start new one
-      const oldTarget = this.config?.targetWallet ?? null;
+  async start(config: BotConfig, userId?: number, ctx?: UserContext): Promise<BotStatus> {
+    const uid = userId ?? 0;
+    const existing = this.instances.get(uid);
+
+    if (existing) {
+      const oldTarget = existing.config.targetWallet;
       const switchEvent: BotSwitchingEvent = { from: oldTarget, to: config.targetWallet };
-      this.emit("bot:switching", switchEvent);
+      this.emit("bot:switching", { userId: uid, ...switchEvent });
 
-      this.copyTrader.stop();
-      this.copyTrader.removeAllListeners();
-      this.copyTrader = null;
-      this.hlClient = null;
-      this.startedAt = null;
+      existing.copyTrader.stop();
+      existing.copyTrader.removeAllListeners();
+      this.instances.delete(uid);
 
       // Close all open positions before switching
       const { closeAllPositions } = await import("./accountService.js");
-      await closeAllPositions();
+      await closeAllPositions(ctx?.walletAddress, ctx?.arenaApiKey);
     }
 
-    return this._startFresh(config);
+    return this._startFresh(config, uid, ctx);
   }
 
-  private async _startFresh(config: BotConfig): Promise<BotStatus> {
+  private async _startFresh(config: BotConfig, userId: number, ctx?: UserContext): Promise<BotStatus> {
     await loadCopyTrading();
 
     // Set env vars for the copy trading config
@@ -86,15 +82,31 @@ class BotManager extends EventEmitter {
     process.env.BLOCKED_ASSETS = config.blockedAssets.join(",");
     process.env.DRY_RUN = String(config.dryRun);
 
-    this.hlClient = new HLClientClass!();
-    await this.hlClient.initialize();
+    // If user context provided, override wallet credentials
+    if (ctx) {
+      process.env.MAIN_WALLET_PRIVATE_KEY = ctx.privateKey;
+      process.env.MAIN_WALLET_ADDRESS = ctx.walletAddress;
+      process.env.ARENA_API_KEY = ctx.arenaApiKey;
+    }
 
-    this.copyTrader = new CopyTraderClass!(this.hlClient, config.targetWallet);
-    this.config = config;
-    this.tradeHistory = [];
+    const hlClient = new HLClientClass!();
+    await hlClient.initialize();
+
+    const copyTrader = new CopyTraderClass!(hlClient, config.targetWallet);
+    const tradeHistory: BotTradeEvent[] = [];
+
+    const instance: BotInstance = {
+      copyTrader,
+      hlClient,
+      config,
+      tradeHistory,
+      startedAt: Date.now(),
+    };
+
+    this.instances.set(userId, instance);
 
     // Forward events
-    this.copyTrader.on("trade", (data: Record<string, unknown>) => {
+    copyTrader.on("trade", (data: Record<string, unknown>) => {
       const event: BotTradeEvent = {
         type: "trade",
         timestamp: (data.timestamp as number) ?? Date.now(),
@@ -106,12 +118,12 @@ class BotManager extends EventEmitter {
         orderId: (data.result as Record<string, unknown>)?.orderId as string,
         success: true,
       };
-      this.addTradeEvent(event);
-      this.emit("bot:trade", event);
-      this.emit("bot:status", this.getStatus());
+      this._addTradeEvent(instance, event);
+      this.emit("bot:trade", { userId, ...event });
+      this.emit("bot:status", { userId, ...this.getStatus(userId) });
     });
 
-    this.copyTrader.on("error", (data: Record<string, unknown>) => {
+    copyTrader.on("error", (data: Record<string, unknown>) => {
       const event: BotTradeEvent = {
         type: "error",
         timestamp: (data.timestamp as number) ?? Date.now(),
@@ -119,41 +131,65 @@ class BotManager extends EventEmitter {
         error: data.error as string,
         success: false,
       };
-      this.addTradeEvent(event);
-      this.emit("bot:error", event);
+      this._addTradeEvent(instance, event);
+      this.emit("bot:error", { userId, ...event });
     });
 
-    this.copyTrader.on("status", () => {
-      this.emit("bot:status", this.getStatus());
+    copyTrader.on("status", () => {
+      this.emit("bot:status", { userId, ...this.getStatus(userId) });
     });
 
-    await this.copyTrader.start();
-    this.startedAt = Date.now();
-    const status = this.getStatus();
-    this.emit("bot:status", status);
+    await copyTrader.start();
+    const status = this.getStatus(userId);
+    this.emit("bot:status", { userId, ...status });
     return status;
   }
 
-  async stop(): Promise<BotStatus> {
-    if (!this.copyTrader) {
+  async stop(userId?: number): Promise<BotStatus> {
+    const uid = userId ?? 0;
+    const instance = this.instances.get(uid);
+    if (!instance) {
       throw new Error("Bot is not running.");
     }
 
-    this.copyTrader.stop();
-    this.copyTrader.removeAllListeners();
-    this.copyTrader = null;
-    this.hlClient = null;
-    this.startedAt = null;
+    instance.copyTrader.stop();
+    instance.copyTrader.removeAllListeners();
+    this.instances.delete(uid);
 
-    const status = this.getStatus();
-    this.emit("bot:status", status);
+    const status = this._emptyStatus();
+    this.emit("bot:status", { userId: uid, ...status });
     return status;
   }
 
-  private addTradeEvent(event: BotTradeEvent) {
-    this.tradeHistory.push(event);
-    if (this.tradeHistory.length > MAX_TRADE_HISTORY) {
-      this.tradeHistory.shift();
+  private _emptyStatus(): BotStatus {
+    return {
+      running: false,
+      targetWallet: null,
+      activeTradesCount: 0,
+      activeTrades: [],
+      wsConnected: false,
+      startedAt: null,
+      config: null,
+    };
+  }
+
+  private _instanceStatus(instance: BotInstance): BotStatus {
+    const status = instance.copyTrader.getStatus();
+    return {
+      running: status.running,
+      targetWallet: status.targetWallet,
+      activeTradesCount: status.activeTradesCount,
+      activeTrades: status.activeTrades,
+      wsConnected: status.wsConnected,
+      startedAt: instance.startedAt,
+      config: instance.config,
+    };
+  }
+
+  private _addTradeEvent(instance: BotInstance, event: BotTradeEvent) {
+    instance.tradeHistory.push(event);
+    if (instance.tradeHistory.length > MAX_TRADE_HISTORY) {
+      instance.tradeHistory.shift();
     }
   }
 }

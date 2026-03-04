@@ -9,6 +9,7 @@ import { RightSidebar } from "./components/Sidebar/RightSidebar.js";
 import { TokenTicker } from "./components/TokenTicker.js";
 import { useWebSocket } from "./hooks/useWebSocket.js";
 import { useFavorites } from "./hooks/useFavorites.js";
+import { AuthProvider, useAuth } from "./hooks/useAuth.js";
 import type { TraderSummary, BotConfig, LeaderboardResponse } from "../../shared/types.js";
 
 const queryClient = new QueryClient();
@@ -16,6 +17,7 @@ const queryClient = new QueryClient();
 function Dashboard() {
   const { connected, botStatus, trades, dockerLogs, isSwitching } = useWebSocket();
   const { favoriteTraders, isFavorite, toggleFavorite, refreshFavorites } = useFavorites();
+  const { user, isAuthenticated, logout } = useAuth();
   const qc = useQueryClient();
   const [selectedTrader, setSelectedTrader] = useState<TraderSummary | null>(null);
   const [copyConfig, setCopyConfig] = useState<Partial<BotConfig> | null>(null);
@@ -53,10 +55,23 @@ function Dashboard() {
       <header className="relative border-b border-border/30 bg-bg-secondary px-4 py-2 shrink-0 h-9 flex items-center">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
-            <span className="text-green text-sm font-bold tracking-wider">HL TRADER</span>
-            <span className="text-text-dim text-xs">v2.0</span>
+            <span className="text-green text-sm font-bold tracking-wider">HYPER COPY</span>
+            <span className="text-text-dim text-xs">Pick the best trader. Start copying instantly.</span>
           </div>
           <div className="flex items-center gap-3 text-xs">
+            {isAuthenticated && user && (
+              <>
+                <span className="text-amber">
+                  usr: <span className="text-text">{user.username}</span>
+                </span>
+                <button
+                  onClick={logout}
+                  className="text-text-dim hover:text-red transition-colors"
+                >
+                  [logout]
+                </button>
+              </>
+            )}
             <span className="text-text-dim">
               <span className="text-green">SYS</span> ONLINE
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-green ml-1.5 align-middle" />
@@ -87,7 +102,7 @@ function Dashboard() {
           </main>
 
           {/* Right: Sidebar */}
-          <RightSidebar botStatus={botStatus} dockerLogs={dockerLogs} onViewTrader={handleViewTrader} isSwitching={isSwitching} />
+          <RightSidebar botStatus={botStatus} onViewTrader={handleViewTrader} isSwitching={isSwitching} />
         </div>
 
         {/* Trade Log */}
@@ -107,10 +122,11 @@ function Dashboard() {
           <TraderDetailPanel
             trader={selectedTrader}
             onClose={handleCloseTrader}
-            onCopy={handleCopy}
+            onCopy={isAuthenticated && user?.onboarded ? handleCopy : () => {}}
             activeCopyTarget={botStatus?.running ? botStatus.targetWallet : null}
             isFavorite={isFavorite(selectedTrader.address)}
             onToggleFavorite={() => toggleFavorite(selectedTrader.address, selectedTrader)}
+            isAuthenticated={isAuthenticated && !!user?.onboarded}
           />
         </>
       )}
@@ -130,7 +146,9 @@ function Dashboard() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Dashboard />
+      <AuthProvider>
+        <Dashboard />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

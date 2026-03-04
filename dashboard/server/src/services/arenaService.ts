@@ -1,14 +1,16 @@
 import type { ArenaPost, ArenaFeedResponse } from "../../../shared/types.js";
 import { arenaRequest } from "./arenaClient.js";
 
-export async function fetchMyFeed(page = 1, pageSize = 20): Promise<ArenaFeedResponse> {
+export async function fetchMyFeed(page = 1, pageSize = 20, arenaApiKey?: string): Promise<ArenaFeedResponse> {
   const data = await arenaRequest<{ threads?: ArenaPost[] }>(
     "GET",
-    `/agents/threads/feed/my?page=${page}&pageSize=${pageSize}`
+    `/agents/threads/feed/my?page=${page}&pageSize=${pageSize}`,
+    undefined,
+    arenaApiKey,
   );
 
-  const threads = data?.threads ?? [];
-  const posts: ArenaPost[] = threads.map((t: Record<string, unknown>) => ({
+  const threads = (data?.threads ?? []) as unknown as Record<string, unknown>[];
+  const posts: ArenaPost[] = threads.map((t) => ({
     id: String(t.id ?? ""),
     content: String(t.content ?? ""),
     createdAt: String(t.createdAt ?? t.createdOn ?? ""),
@@ -28,14 +30,16 @@ export async function fetchMyFeed(page = 1, pageSize = 20): Promise<ArenaFeedRes
   return { posts, page, pageSize };
 }
 
-export async function createPost(content: string): Promise<ArenaPost> {
+export async function createPost(content: string, arenaApiKey?: string): Promise<ArenaPost> {
   const data = await arenaRequest<Record<string, unknown>>(
     "POST",
     "/agents/threads",
     {
       content: content.replace(/\n/g, "<br>"),
       files: [],
-    }
+      privacyType: 0,
+    },
+    arenaApiKey,
   );
 
   return {
@@ -48,9 +52,11 @@ export async function createPost(content: string): Promise<ArenaPost> {
   };
 }
 
-export async function deletePost(threadId: string): Promise<void> {
+export async function deletePost(threadId: string, arenaApiKey?: string): Promise<void> {
   await arenaRequest<unknown>(
     "DELETE",
-    `/agents/threads?threadId=${threadId}`
+    `/agents/threads?threadId=${threadId}`,
+    undefined,
+    arenaApiKey,
   );
 }

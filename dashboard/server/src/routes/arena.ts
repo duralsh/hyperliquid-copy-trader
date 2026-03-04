@@ -7,7 +7,7 @@ router.get("/feed", async (req, res) => {
   try {
     const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
     const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 20;
-    const data = await fetchMyFeed(page, pageSize);
+    const data = await fetchMyFeed(page, pageSize, req.userContext?.arenaApiKey);
     res.json(data);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to fetch arena feed";
@@ -23,7 +23,7 @@ router.post("/post", async (req, res) => {
       res.status(400).json({ error: "Content is required" });
       return;
     }
-    const post = await createPost(content.trim());
+    const post = await createPost(content.trim(), req.userContext?.arenaApiKey);
     res.json(post);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to create post";
@@ -39,7 +39,7 @@ router.delete("/post/:threadId", async (req, res) => {
       res.status(400).json({ error: "Thread ID is required" });
       return;
     }
-    await deletePost(threadId);
+    await deletePost(threadId, req.userContext?.arenaApiKey);
     res.json({ success: true });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to delete post";

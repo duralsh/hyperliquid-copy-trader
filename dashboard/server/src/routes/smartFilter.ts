@@ -6,7 +6,7 @@ const router = Router();
 router.get("/", async (req, res) => {
   try {
     const refresh = req.query.refresh === "true";
-    const data = await runSmartFilter(refresh);
+    const data = await runSmartFilter(refresh, req.userContext?.walletAddress);
     res.json(data);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to run smart filter";

@@ -4,3 +4,14 @@ dist/
 *.js.map
 .DS_Store
 **/.DS_Store
+
+# Build artifacts (compiled TS)
+src/**/*.js
+src/**/*.d.ts
+dashboard/shared/*.js
+dashboard/shared/*.d.ts
+
+# SQLite databases
+data/*.db
+data/*.db-shm
+data/*.db-wal

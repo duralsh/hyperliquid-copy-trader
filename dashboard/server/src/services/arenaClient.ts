@@ -18,10 +18,10 @@ export function getArenaApiKey(): string {
   return key;
 }
 
-export function buildArenaHeaders(): Record<string, string> {
+export function buildArenaHeaders(arenaApiKey?: string): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    "x-api-key": getArenaApiKey(),
+    "x-api-key": arenaApiKey ?? getArenaApiKey(),
   };
 }
 
@@ -34,11 +34,12 @@ export async function arenaRequest<T>(
   method: string,
   path: string,
   body?: unknown,
+  arenaApiKey?: string,
 ): Promise<T> {
   const url = `${getArenaBaseUrl()}${path}`;
   const init: RequestInit = {
     method,
-    headers: buildArenaHeaders(),
+    headers: buildArenaHeaders(arenaApiKey),
   };
   if (body !== undefined) {
     init.body = JSON.stringify(body);

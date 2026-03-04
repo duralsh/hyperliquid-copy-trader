@@ -3,9 +3,9 @@ import { fetchWalletBalances, deposit, withdraw } from "../services/walletServic
 
 const router = Router();
 
-router.get("/balances", async (_req, res) => {
+router.get("/balances", async (req, res) => {
   try {
-    const balances = await fetchWalletBalances();
+    const balances = await fetchWalletBalances(req.userContext?.walletAddress);
     res.json(balances);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to fetch balances";
@@ -21,7 +21,7 @@ router.post("/deposit", async (req, res) => {
       res.status(400).json({ error: "Amount must be a number >= 5 USDC" });
       return;
     }
-    const txHash = await deposit(amount);
+    const txHash = await deposit(amount, req.userContext?.privateKey);
     res.json({ txHash });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Deposit failed";
@@ -37,7 +37,7 @@ router.post("/withdraw", async (req, res) => {
       res.status(400).json({ error: "Amount must be a positive number" });
       return;
     }
-    const result = await withdraw(amount);
+    const result = await withdraw(amount, req.userContext?.walletAddress, req.userContext?.privateKey);
     res.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Withdraw failed";

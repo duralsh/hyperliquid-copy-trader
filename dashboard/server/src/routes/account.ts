@@ -3,9 +3,9 @@ import { fetchMyAccount, closeAllPositions, closePosition } from "../services/ac
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const data = await fetchMyAccount();
+    const data = await fetchMyAccount(req.userContext?.walletAddress);
     res.json(data);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to fetch account data";
@@ -21,7 +21,7 @@ router.post("/close-position", async (req, res) => {
       res.status(400).json({ error: "Missing or invalid 'coin' in request body" });
       return;
     }
-    const result = await closePosition(coin);
+    const result = await closePosition(coin, req.userContext?.walletAddress, req.userContext?.arenaApiKey);
     if (!result.success) {
       res.status(400).json(result);
       return;
@@ -34,9 +34,9 @@ router.post("/close-position", async (req, res) => {
   }
 });
 
-router.post("/close-all", async (_req, res) => {
+router.post("/close-all", async (req, res) => {
   try {
-    const result = await closeAllPositions();
+    const result = await closeAllPositions(req.userContext?.walletAddress, req.userContext?.arenaApiKey);
     res.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Failed to close positions";

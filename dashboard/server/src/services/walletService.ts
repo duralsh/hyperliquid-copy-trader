@@ -52,11 +52,11 @@ let cachedBalances: { ethBalance: number; usdcBalance: number } | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 15_000;
 
-export async function fetchWalletBalances(): Promise<{ ethBalance: number; usdcBalance: number }> {
-  if (cachedBalances && Date.now() - cacheTime < CACHE_TTL) return cachedBalances;
+export async function fetchWalletBalances(walletAddress?: string): Promise<{ ethBalance: number; usdcBalance: number }> {
+  if (!walletAddress && cachedBalances && Date.now() - cacheTime < CACHE_TTL) return cachedBalances;
 
   const pub = getPublicClient();
-  const addr = env().walletAddress as `0x${string}`;
+  const addr = (walletAddress ?? env().walletAddress) as `0x${string}`;
 
   const [ethRaw, usdcRaw] = await Promise.all([
     pub.getBalance({ address: addr }),
@@ -75,8 +75,8 @@ export function invalidateBalanceCache() {
   cachedBalances = null;
 }
 
-export async function deposit(amount: number): Promise<string> {
-  const account = getAccount();
+export async function deposit(amount: number, privateKey?: string): Promise<string> {
+  const account = privateKey ? privateKeyToAccount((privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`) as `0x${string}`) : getAccount();
   const walletClient = createWalletClient({ account, chain: arbitrum, transport: http(env().arbRpc) });
   const pub = getPublicClient();
 
@@ -92,9 +92,9 @@ export async function deposit(amount: number): Promise<string> {
   return hash;
 }
 
-export async function withdraw(amount: number): Promise<{ success: boolean }> {
-  const { walletAddress } = env();
-  const account = getAccount();
+export async function withdraw(amount: number, walletAddr?: string, privKey?: string): Promise<{ success: boolean }> {
+  const walletAddress = walletAddr ?? env().walletAddress;
+  const account = privKey ? privateKeyToAccount((privKey.startsWith("0x") ? privKey : `0x${privKey}`) as `0x${string}`) : getAccount();
   const walletClient = createWalletClient({ account, chain: arbitrum, transport: http(env().arbRpc) });
   const timestamp = Date.now();
 

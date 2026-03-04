@@ -19,10 +19,10 @@ function getWalletAddress(): string {
 /**
  * Close a single open position for the given coin via the Arena API.
  */
-export async function closePosition(coin: string): Promise<ClosePositionResult> {
+export async function closePosition(coin: string, walletAddress?: string, arenaApiKey?: string): Promise<ClosePositionResult> {
   // Force-fetch fresh positions (bypass cache)
   cache = null;
-  const account = await fetchMyAccount();
+  const account = await fetchMyAccount(walletAddress);
 
   const pos = account.positions.find((p) => p.coin === coin);
   if (!pos) {
@@ -53,7 +53,7 @@ export async function closePosition(coin: string): Promise<ClosePositionResult> 
       size: Math.abs(size),
       currentPrice: midPrice,
       closePercent: 100,
-    });
+    }, arenaApiKey);
 
     // Invalidate cache so next fetch reflects the closed position
     cache = null;
@@ -76,10 +76,10 @@ export async function closePosition(coin: string): Promise<ClosePositionResult> 
 /**
  * Close all open positions by sending a market close for each via the Arena API.
  */
-export async function closeAllPositions(): Promise<CloseAllResult> {
+export async function closeAllPositions(walletAddress?: string, arenaApiKey?: string): Promise<CloseAllResult> {
   // Force-fetch fresh positions (bypass cache)
   cache = null;
-  const account = await fetchMyAccount();
+  const account = await fetchMyAccount(walletAddress);
 
   if (account.positions.length === 0) {
     return { closed: [], errors: [] };
@@ -111,7 +111,7 @@ export async function closeAllPositions(): Promise<CloseAllResult> {
           size: Math.abs(size),
           currentPrice: midPrice,
           closePercent: 100,
-        });
+        }, arenaApiKey);
         return { coin: pos.coin, side: positionSide, size: String(Math.abs(size)) } as const;
       } catch (err: unknown) {
         return { coin: pos.coin, error: err instanceof Error ? err.message : "Unknown error" } as const;
@@ -134,8 +134,8 @@ export async function closeAllPositions(): Promise<CloseAllResult> {
   return result;
 }
 
-export async function fetchMyAccount(): Promise<MyAccountData> {
-  const address = getWalletAddress();
+export async function fetchMyAccount(walletAddress?: string): Promise<MyAccountData> {
+  const address = walletAddress ?? getWalletAddress();
 
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL) {
     return cache.data;

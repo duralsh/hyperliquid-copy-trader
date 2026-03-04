@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLeaderboard } from "../../hooks/useLeaderboard.js";
 import { useSmartFilter } from "../../hooks/useSmartFilter.js";
+import { useAuth } from "../../hooks/useAuth.js";
 import { formatUSD, formatPnl, formatRoi, formatVolume, shortenAddress } from "../../utils/format.js";
 import { CopyButton } from "../CopyButton.js";
 import { StarButton } from "../StarButton.js";
@@ -45,6 +46,7 @@ const SMART_COLUMNS: { key: string; label: string; align: "left" | "right" }[] =
 ];
 
 export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTraders, isFavorite, toggleFavorite, refreshFavorites }: Props) {
+  const { isAuthenticated } = useAuth();
   const [window, setWindow] = useState<TimeWindow>("month");
   const [sort, setSort] = useState<SortField>("pnl");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -347,7 +349,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
                     <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{idx + 1}</td>
                     <td className="py-2.5 px-2">
                       <div className="flex items-center gap-1">
-                        <StarButton active={isFavorite(result.trader.address)} onClick={() => toggleFavorite(result.trader.address, result.trader)} />
+                        <StarButton active={isFavorite(result.trader.address)} onClick={() => isAuthenticated ? toggleFavorite(result.trader.address, result.trader) : undefined} />
                         <span className="text-amber text-sm">
                           {result.trader.displayName || shortenAddress(result.trader.address)}
                         </span>
@@ -430,7 +432,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
                   <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{t.rank}</td>
                   <td className="py-2.5 px-2">
                     <div className="flex items-center gap-1">
-                      <StarButton active={isFavorite(t.address)} onClick={() => toggleFavorite(t.address, t)} />
+                      <StarButton active={isFavorite(t.address)} onClick={() => isAuthenticated ? toggleFavorite(t.address, t) : undefined} />
                       <span className="text-amber text-sm">{t.displayName || shortenAddress(t.address)}</span>
                       {t.displayName && (
                         <span className="text-text-dim text-xs ml-1">{shortenAddress(t.address)}</span>
