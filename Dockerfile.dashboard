@@ -47,4 +47,4 @@ RUN mkdir -p /app/data
 
 EXPOSE 3002
 
-CMD ["node", "dashboard/server/dist/index.js"]
+CMD ["npx", "tsx", "dashboard/server/dist/index.js"]
