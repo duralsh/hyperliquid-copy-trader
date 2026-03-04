@@ -10,14 +10,14 @@ const configSchema = z.object({
     .pipe(z.number().positive()),
   MAX_LEVERAGE: z
     .string()
-    .default("20")
+    .default("40")
     .transform(Number)
-    .pipe(z.number().min(1).max(100)),
+    .pipe(z.number().min(1).max(200)),
   MAX_POSITION_SIZE_PERCENT: z
     .string()
-    .default("50")
+    .default("100")
     .transform(Number)
-    .pipe(z.number().min(1).max(100)),
+    .pipe(z.number().min(1).max(1000)),
   MIN_NOTIONAL: z
     .string()
     .default("10")

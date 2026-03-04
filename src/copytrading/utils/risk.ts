@@ -19,15 +19,25 @@ export function capLeverage(leverage: number): number {
   return Math.min(leverage, copyTradingConfig.MAX_LEVERAGE);
 }
 
-export function capPositionSize(calculatedSize: number, ourEquity: number): number {
-  const maxSize = (ourEquity * copyTradingConfig.MAX_POSITION_SIZE_PERCENT) / 100;
-  return Math.min(calculatedSize, maxSize);
+export function capPositionSize(
+  calculatedSize: number,
+  ourEquity: number,
+  price: number,
+  leverage: number
+): number {
+  const safeLeverage = leverage > 0 ? leverage : 1;
+  const maxMargin = (ourEquity * copyTradingConfig.MAX_POSITION_SIZE_PERCENT) / 100;
+  const maxNotional = maxMargin * safeLeverage;
+  const maxCoinQty = price > 0 ? maxNotional / price : calculatedSize;
+  return Math.min(calculatedSize, maxCoinQty);
 }
 
 export function calculatePositionSize(
   targetSize: number,
   ourEquity: number,
-  targetEquity: number
+  targetEquity: number,
+  price: number,
+  leverage: number
 ): number {
   if (targetEquity === 0) {
     logger.warn("Target equity is zero, using target size directly");
@@ -35,7 +45,7 @@ export function calculatePositionSize(
   }
   const ratio = ourEquity / targetEquity;
   const calculatedSize = ratio * targetSize * copyTradingConfig.SIZE_MULTIPLIER;
-  return capPositionSize(calculatedSize, ourEquity);
+  return capPositionSize(calculatedSize, ourEquity, price, leverage);
 }
 
 export function getTradeAction(fill: FillEvent): "open" | "reduce" | "close" {
@@ -69,11 +79,13 @@ export function validateTradeParams(
     };
   }
   const positionValue = parseFloat(params.size) * parseFloat(price);
+  const leverage = params.leverage > 0 ? params.leverage : 1;
+  const marginRequired = positionValue / leverage;
   const maxAllowed = (ourEquity * copyTradingConfig.MAX_POSITION_SIZE_PERCENT) / 100;
-  if (positionValue > maxAllowed) {
+  if (marginRequired > maxAllowed) {
     return {
       valid: false,
-      reason: `Position value ${positionValue} exceeds ${maxAllowed} max`,
+      reason: `Margin required ${marginRequired.toFixed(2)} exceeds ${maxAllowed.toFixed(2)} max (notional ${positionValue.toFixed(2)} at ${leverage}x)`,
     };
   }
   return { valid: true };

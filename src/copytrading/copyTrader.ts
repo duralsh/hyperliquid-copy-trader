@@ -284,7 +284,12 @@ export class CopyTrader extends EventEmitter {
       side = fill.side;
     }
 
-    const calculatedSize = calculatePositionSize(fillSize, ourEquity, targetEquity);
+    const leverage = targetPosition?.leverage
+      ? capLeverage(parseInt(targetPosition.leverage.value, 10))
+      : 1;
+
+    const fillPrice = parseFloat(fill.px);
+    const calculatedSize = calculatePositionSize(fillSize, ourEquity, targetEquity, fillPrice, leverage);
 
     if (calculatedSize <= 0 || isNaN(calculatedSize) || !isFinite(calculatedSize)) {
       logger.error("Invalid calculated position size", {
@@ -296,10 +301,6 @@ export class CopyTrader extends EventEmitter {
       });
       return null;
     }
-
-    const leverage = targetPosition?.leverage
-      ? capLeverage(parseInt(targetPosition.leverage.value, 10))
-      : 1;
 
     return {
       coin,
