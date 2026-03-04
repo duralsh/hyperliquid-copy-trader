@@ -199,6 +199,16 @@ class BotManager extends EventEmitter {
     };
   }
 
+  /** Record "stopped" follow events for all running instances and shut them down. */
+  shutdownAll(): void {
+    for (const [uid, instance] of this.instances) {
+      insertFollowEvent(uid, "stopped", instance.config.targetWallet);
+      instance.copyTrader.stop();
+      instance.copyTrader.removeAllListeners();
+    }
+    this.instances.clear();
+  }
+
   private _addTradeEvent(instance: BotInstance, event: BotTradeEvent) {
     instance.tradeHistory.push(event);
     if (instance.tradeHistory.length > MAX_TRADE_HISTORY) {

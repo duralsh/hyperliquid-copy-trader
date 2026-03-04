@@ -129,6 +129,17 @@ startLogStream();
 // Bootstrap admin user from env vars
 bootstrapAdmin();
 
+// Graceful shutdown — record "stopped" follow events for running bots
+function shutdown(signal: string) {
+  console.log(`\n[shutdown] ${signal} received — cleaning up...`);
+  botManager.shutdownAll();
+  server.close(() => process.exit(0));
+  // Force exit after 5s if close hangs
+  setTimeout(() => process.exit(1), 5000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
 server.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════╗
