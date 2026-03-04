@@ -35,6 +35,7 @@ import {
   capLeverage,
   capPositionSize,
   calculatePositionSize,
+  calculateCloseSize,
   getTradeAction,
   validateTradeParams,
 } from "../risk.js";
@@ -230,6 +231,43 @@ describe("calculatePositionSize", () => {
     // ratio=1, calc=0.05, cap: maxNotional=40000, maxCoinQty≈0.597 → 0.05
     const result = calculatePositionSize(0.1, 1000, 1000, 67000, 40);
     expect(result).toBeCloseTo(0.05, 8);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calculateCloseSize
+// ---------------------------------------------------------------------------
+describe("calculateCloseSize", () => {
+  it("full close — 100% of position", () => {
+    // target closes 12.34 of 12.34 → 100%, we close 100% of our 1.18
+    const result = calculateCloseSize(12.34, 12.34, 1.18);
+    expect(result).toBeCloseTo(1.18, 8);
+  });
+
+  it("partial close — 50% of position", () => {
+    const result = calculateCloseSize(5, 10, 2);
+    expect(result).toBeCloseTo(1.0, 8);
+  });
+
+  it("caps at 100% when fill > startPosition", () => {
+    const result = calculateCloseSize(15, 10, 2);
+    expect(result).toBeCloseTo(2.0, 8);
+  });
+
+  it("handles negative (short) position sizes", () => {
+    const result = calculateCloseSize(5, -10, -2);
+    expect(result).toBeCloseTo(1.0, 8);
+  });
+
+  it("targetStartPosition=0 returns full close", () => {
+    const result = calculateCloseSize(1, 0, 3);
+    expect(result).toBe(3);
+  });
+
+  it("small percentage close", () => {
+    // target closes 1 of 100 → 1%, we close 1% of our 10
+    const result = calculateCloseSize(1, 100, 10);
+    expect(result).toBeCloseTo(0.1, 8);
   });
 });
 

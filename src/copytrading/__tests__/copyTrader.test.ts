@@ -484,6 +484,196 @@ describe("Edge cases", () => {
 });
 
 // ---------------------------------------------------------------------------
+// H. Percentage-based close sizing
+// ---------------------------------------------------------------------------
+describe("Percentage-based close sizing", () => {
+  it("SOL scenario: full close uses percentage, not equity ratio", async () => {
+    // Wildly different equities — equity-ratio would give wrong size
+    mockClient.getAccountEquity
+      .mockResolvedValueOnce({ accountValue: "100" })     // our (tiny)
+      .mockResolvedValueOnce({ accountValue: "50000" }); // target (large)
+    // getPositions: first call = our positions, second = target positions
+    mockClient.getPositions
+      .mockResolvedValueOnce([makePosition({ coin: "SOL", szi: "1.18", leverage: { value: "10" } })])
+      .mockResolvedValueOnce([makePosition({ coin: "SOL", szi: "0", leverage: { value: "10" } })]);
+
+    const fill = makeFill({
+      coin: "SOL",
+      dir: "Close Long",
+      startPosition: "12.34",
+      sz: "12.34",
+      px: "150",
+      side: "A",
+    });
+    await (copyTrader as any).handleFill(fill);
+
+    expect(mockClient.placeOrder).toHaveBeenCalledOnce();
+    const call = mockClient.placeOrder.mock.calls[0][0];
+    // closePercent = 12.34/12.34 = 100% → close 100% of our 1.18 SOL
+    expect(parseFloat(call.sz)).toBeCloseTo(1.18, 6);
+    expect(call.reduceOnly).toBe(true);
+  });
+
+  it("50% partial close: target closes half → we close half", async () => {
+    mockClient.getAccountEquity
+      .mockResolvedValueOnce({ accountValue: "500" })
+      .mockResolvedValueOnce({ accountValue: "10000" });
+    mockClient.getPositions
+      .mockResolvedValueOnce([makePosition({ szi: "2.0", leverage: { value: "10" } })])
+      .mockResolvedValueOnce([makePosition({ szi: "5.0", leverage: { value: "10" } })]);
+
+    const fill = makeFill({
+      dir: "Close Long",
+      startPosition: "10.0",
+      sz: "5.0",
+      px: "67000",
+      side: "A",
+    });
+    await (copyTrader as any).handleFill(fill);
+
+    const call = mockClient.placeOrder.mock.calls[0][0];
+    // 50% of our 2.0 = 1.0
+    expect(parseFloat(call.sz)).toBeCloseTo(1.0, 6);
+  });
+
+  it("equity ratio is irrelevant for closes: 1000:1 ratio doesn't inflate", async () => {
+    mockClient.getAccountEquity
+      .mockResolvedValueOnce({ accountValue: "100" })
+      .mockResolvedValueOnce({ accountValue: "100000" });
+    mockClient.getPositions
+      .mockResolvedValueOnce([makePosition({ coin: "ETH", szi: "0.5", leverage: { value: "10" } })])
+      .mockResolvedValueOnce([makePosition({ coin: "ETH", szi: "25.0", leverage: { value: "10" } })]);
+
+    const fill = makeFill({
+      coin: "ETH",
+      dir: "Close Long",
+      startPosition: "50.0",
+      sz: "25.0",
+      px: "3500",
+      side: "A",
+    });
+    await (copyTrader as any).handleFill(fill);
+
+    const call = mockClient.placeOrder.mock.calls[0][0];
+    // 50% of our 0.5 = 0.25, NOT equity-based
+    expect(parseFloat(call.sz)).toBeCloseTo(0.25, 6);
+  });
+
+  it("close short: percentage sizing works for negative positions", async () => {
+    mockClient.getAccountEquity
+      .mockResolvedValueOnce({ accountValue: "1000" })
+      .mockResolvedValueOnce({ accountValue: "5000" });
+    mockClient.getPositions
+      .mockResolvedValueOnce([makePosition({ szi: "-0.5", leverage: { value: "20" } })])
+      .mockResolvedValueOnce([makePosition({ szi: "-2.5", leverage: { value: "20" } })]);
+
+    const fill = makeFill({
+      dir: "Close Short",
+      startPosition: "-5.0",
+      sz: "5.0",
+      px: "67000",
+      side: "B",
+    });
+    await (copyTrader as any).handleFill(fill);
+
+    const call = mockClient.placeOrder.mock.calls[0][0];
+    // 100% of |our -0.5| = 0.5
+    expect(parseFloat(call.sz)).toBeCloseTo(0.5, 6);
+    expect(call.side).toBe("B");
+  });
+
+  it("no our position → falls back to equity-ratio sizing", async () => {
+    mockClient.getAccountEquity
+      .mockResolvedValueOnce({ accountValue: "1000" })
+      .mockResolvedValueOnce({ accountValue: "1000" });
+    mockClient.getPositions
+      .mockResolvedValueOnce([])  // our: no position
+      .mockResolvedValueOnce([makePosition({ szi: "1.0", leverage: { value: "40" } })]);
+
+    const fill = makeFill({
+      dir: "Close Long",
+      startPosition: "1.0",
+      sz: "0.5",
+      px: "67000",
+      side: "A",
+    });
+    await (copyTrader as any).handleFill(fill);
+
+    const call = mockClient.placeOrder.mock.calls[0][0];
+    // No our position → equity-ratio: ratio=1, calc=0.5, capped by maxNotional
+    expect(parseFloat(call.sz)).toBeGreaterThan(0);
+    expect(call.reduceOnly).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// I. Aggregator integration
+// ---------------------------------------------------------------------------
+describe("Aggregator integration", () => {
+  it("start() routes fills through aggregator with debounce", async () => {
+    vi.useFakeTimers();
+
+    let capturedCallback: ((fill: FillEvent) => void) | undefined;
+    mockClient.subscribeToUserFills.mockImplementation(
+      async (_wallet: string, cb: (fill: FillEvent) => void) => {
+        capturedCallback = cb;
+        return () => {};
+      }
+    );
+
+    await copyTrader.start();
+    expect(capturedCallback).toBeDefined();
+
+    mockClient.getAccountEquity.mockResolvedValue({ accountValue: "1000" });
+    mockClient.getPositions.mockResolvedValue([
+      makePosition({ coin: "SOL", szi: "1.0", leverage: { value: "10" } }),
+    ]);
+
+    // Send fill — should NOT trigger handleFill immediately (buffered by aggregator)
+    capturedCallback!(makeFill({ coin: "SOL", hash: "0xtest", dir: "Open Long" }));
+    expect(mockClient.getAccountEquity).not.toHaveBeenCalled();
+
+    // Advance past 150ms debounce
+    await vi.advanceTimersByTimeAsync(150);
+
+    // handleFill was invoked (getAccountEquity called proves fill was dispatched)
+    expect(mockClient.getAccountEquity).toHaveBeenCalled();
+
+    copyTrader.stop();
+    vi.useRealTimers();
+  });
+
+  it("stop() flushes pending fills before shutting down", async () => {
+    vi.useFakeTimers();
+
+    let capturedCallback: ((fill: FillEvent) => void) | undefined;
+    mockClient.subscribeToUserFills.mockImplementation(
+      async (_wallet: string, cb: (fill: FillEvent) => void) => {
+        capturedCallback = cb;
+        return () => {};
+      }
+    );
+
+    await copyTrader.start();
+
+    mockClient.getAccountEquity.mockResolvedValue({ accountValue: "1000" });
+    mockClient.getPositions.mockResolvedValue([
+      makePosition({ coin: "SOL", szi: "1.0", leverage: { value: "10" } }),
+    ]);
+
+    // Send fill but don't advance timers
+    capturedCallback!(makeFill({ coin: "SOL", hash: "0xpending", dir: "Open Long" }));
+    expect(mockClient.getAccountEquity).not.toHaveBeenCalled();
+
+    // stop() should flush the pending fill
+    copyTrader.stop();
+    expect(mockClient.getAccountEquity).toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // E. DRY_RUN
 // ---------------------------------------------------------------------------
 describe("DRY_RUN", () => {

@@ -48,6 +48,17 @@ export function calculatePositionSize(
   return capPositionSize(calculatedSize, ourEquity, price, leverage);
 }
 
+export function calculateCloseSize(
+  targetFillSize: number,
+  targetStartPosition: number,
+  ourPositionSize: number,
+): number {
+  if (targetStartPosition === 0) return Math.abs(ourPositionSize);
+  const closePercent = targetFillSize / Math.abs(targetStartPosition);
+  const pct = Math.min(closePercent, 1);
+  return pct * Math.abs(ourPositionSize);
+}
+
 export function getTradeAction(fill: FillEvent): "open" | "reduce" | "close" {
   if (fill.dir === "Open Long" || fill.dir === "Open Short") return "open";
   if (fill.dir === "Close Long" || fill.dir === "Close Short") {

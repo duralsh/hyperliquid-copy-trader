@@ -4,11 +4,13 @@ import { logger, loggerUtils } from "./logger.js";
 import { HyperliquidClientWrapper } from "./hyperliquidClient.js";
 import {
   calculatePositionSize,
+  calculateCloseSize,
   capLeverage,
   getTradeAction,
   removeTrailingZeros,
   validateTradeParams,
 } from "./utils/risk.js";
+import { FillAggregator } from "./fillAggregator.js";
 import {
   TradingError,
   ValidationError,
@@ -41,6 +43,7 @@ export class CopyTrader extends EventEmitter {
   private targetWallet: string;
   private ourAddress: string;
   private activeTrades: Set<string> = new Set();
+  private aggregator?: FillAggregator;
   private unsubscribeFn?: () => void;
   private running = false;
   private startedAt: number | null = null;
@@ -59,9 +62,11 @@ export class CopyTrader extends EventEmitter {
       dryRun: copyTradingConfig.DRY_RUN,
     });
 
+    this.aggregator = new FillAggregator((fill) => this.handleFill(fill));
+
     this.unsubscribeFn = await this.client.subscribeToUserFills(
       this.targetWallet,
-      (fill: FillEvent) => this.handleFill(fill)
+      (fill: FillEvent) => this.aggregator!.add(fill)
     );
 
     this.running = true;
@@ -71,6 +76,11 @@ export class CopyTrader extends EventEmitter {
   }
 
   stop(): void {
+    if (this.aggregator) {
+      this.aggregator.flushAll();
+      this.aggregator.destroy();
+      this.aggregator = undefined;
+    }
     if (this.unsubscribeFn) {
       this.unsubscribeFn();
       this.unsubscribeFn = undefined;
@@ -144,9 +154,10 @@ export class CopyTrader extends EventEmitter {
 
       logger.info("Account equities", { ourEquity, targetEquity });
 
+      let ourPositions: Position[];
       let targetPositions: Position[];
       try {
-        [, targetPositions] = await retryWithBackoff(
+        [ourPositions, targetPositions] = await retryWithBackoff(
           async () => {
             return await Promise.all([
               this.client.getPositions(this.ourAddress),
@@ -166,6 +177,7 @@ export class CopyTrader extends EventEmitter {
       }
 
       const targetPosition = targetPositions.find((p) => p.coin === fill.coin);
+      const ourPosition = ourPositions.find((p) => p.coin === fill.coin);
 
       let tradeParams: CopyTradeParams | null;
       try {
@@ -174,7 +186,8 @@ export class CopyTrader extends EventEmitter {
           action,
           ourEquity,
           targetEquity,
-          targetPosition
+          targetPosition,
+          ourPosition
         );
       } catch (error: unknown) {
         const formattedError = ErrorHandler.formatError(error);
@@ -257,7 +270,8 @@ export class CopyTrader extends EventEmitter {
     action: "open" | "reduce" | "close",
     ourEquity: number,
     targetEquity: number,
-    targetPosition: Position | undefined
+    targetPosition: Position | undefined,
+    ourPosition: Position | undefined
   ): Promise<CopyTradeParams | null> {
     const coin = fill.coin;
 
@@ -288,8 +302,21 @@ export class CopyTrader extends EventEmitter {
       ? capLeverage(parseInt(targetPosition.leverage.value, 10))
       : 1;
 
-    const fillPrice = parseFloat(fill.px);
-    const calculatedSize = calculatePositionSize(fillSize, ourEquity, targetEquity, fillPrice, leverage);
+    let calculatedSize: number;
+    if (reduceOnly && ourPosition) {
+      const ourPositionSize = parseFloat(ourPosition.szi);
+      calculatedSize = calculateCloseSize(fillSize, parseFloat(fill.startPosition), ourPositionSize);
+      logger.info("Percentage-based close sizing", {
+        targetFillSize: fillSize,
+        targetStartPosition: fill.startPosition,
+        ourPositionSize,
+        calculatedSize,
+        coin,
+      });
+    } else {
+      const fillPrice = parseFloat(fill.px);
+      calculatedSize = calculatePositionSize(fillSize, ourEquity, targetEquity, fillPrice, leverage);
+    }
 
     if (calculatedSize <= 0 || isNaN(calculatedSize) || !isFinite(calculatedSize)) {
       logger.error("Invalid calculated position size", {
