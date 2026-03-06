@@ -63,7 +63,7 @@ function PositionCloseButton({ coin, onSuccess }: { coin: string; onSuccess: () 
 
   if (state === "closing") {
     return (
-      <span className="text-amber text-xs font-bold whitespace-nowrap cursor-not-allowed ml-1 shrink-0">
+      <span className="text-amber text-xs font-bold whitespace-nowrap cursor-not-allowed ml-1 shrink-0" style={{ textShadow: '0 0 6px rgba(255,176,0,0.4)' }}>
         CLOSING...
       </span>
     );
@@ -71,7 +71,7 @@ function PositionCloseButton({ coin, onSuccess }: { coin: string; onSuccess: () 
 
   if (state === "error") {
     return (
-      <span className="text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0" title={errMsg}>
+      <span className="text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0" title={errMsg} style={{ textShadow: '0 0 6px rgba(255,0,64,0.4)' }}>
         ERR
       </span>
     );
@@ -81,18 +81,19 @@ function PositionCloseButton({ coin, onSuccess }: { coin: string; onSuccess: () 
     return (
       <button
         onClick={handleClick}
-        className="text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0 animate-pulse cursor-pointer bg-transparent border-none p-0 hover:underline"
+        className="text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0 animate-pulse cursor-pointer bg-red/10 border border-red/30 rounded px-1.5 py-0.5 hover:bg-red/20 transition-all duration-200"
+        style={{ textShadow: '0 0 6px rgba(255,0,64,0.4)' }}
       >
         CLOSE?
       </button>
     );
   }
 
-  // idle — only visible on group hover
+  // idle -- only visible on group hover
   return (
     <button
       onClick={handleClick}
-      className="text-red/0 group-hover:text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0 cursor-pointer bg-transparent border-none p-0 transition-colors duration-150 hover:underline"
+      className="text-red/0 group-hover:text-red text-xs font-bold whitespace-nowrap ml-1 shrink-0 cursor-pointer bg-transparent border-none p-0 transition-all duration-200 hover:underline"
     >
       CLOSE
     </button>
@@ -170,16 +171,16 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
   return (
     <div className="space-y-2">
       {/* Balances */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between py-0.5">
         <span className="text-text-dim text-xs">ETH</span>
         <span className="text-text text-xs tabular-nums">
-          {walletLoading ? "..." : walletData ? walletData.ethBalance.toFixed(6) : "—"}
+          {walletLoading ? "..." : walletData ? walletData.ethBalance.toFixed(6) : "\u2014"}
         </span>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between py-0.5">
         <span className="text-text-dim text-xs">USDC</span>
         <span className="text-text text-xs tabular-nums">
-          {walletLoading ? "..." : walletData ? walletData.usdcBalance.toFixed(2) : "—"}
+          {walletLoading ? "..." : walletData ? walletData.usdcBalance.toFixed(2) : "\u2014"}
         </span>
       </div>
 
@@ -188,13 +189,13 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
         <div className="flex gap-2 pt-1">
           <button
             onClick={() => setMode("deposit")}
-            className="flex-1 py-1 px-2 text-xs font-bold uppercase tracking-wider border border-green/40 text-green rounded hover:border-green hover:bg-green/10 transition-all duration-200 cursor-pointer bg-transparent"
+            className="flex-1 py-1.5 px-2 text-xs font-bold uppercase tracking-wider border border-green/30 text-green rounded hover:border-green hover:bg-green/10 transition-all duration-300 cursor-pointer bg-transparent hover:shadow-[0_0_12px_rgba(0,255,65,0.15)]"
           >
             Deposit
           </button>
           <button
             onClick={() => setMode("withdraw")}
-            className="flex-1 py-1 px-2 text-xs font-bold uppercase tracking-wider border border-amber/40 text-amber rounded hover:border-amber hover:bg-amber/10 transition-all duration-200 cursor-pointer bg-transparent"
+            className="flex-1 py-1.5 px-2 text-xs font-bold uppercase tracking-wider border border-amber/30 text-amber rounded hover:border-amber hover:bg-amber/10 transition-all duration-300 cursor-pointer bg-transparent hover:shadow-[0_0_12px_rgba(255,176,0,0.15)]"
           >
             Withdraw
           </button>
@@ -210,7 +211,8 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={status === "submitting" || status === "success"}
-              className="flex-1 min-w-0 bg-transparent border border-border/50 rounded px-2 py-1 text-xs text-text tabular-nums outline-none focus:border-green/60"
+              className="flex-1 min-w-0 bg-[#0a0e14] border border-[#1e2a35]/60 rounded px-2 py-1.5 text-xs text-text tabular-nums outline-none focus:border-green/60 focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.4),0_0_6px_rgba(0,255,65,0.1)] transition-all duration-300"
+              style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}
             />
             <button
               onClick={() => {
@@ -222,21 +224,21 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
                 }
               }}
               disabled={status === "submitting" || status === "success"}
-              className="py-1 px-1.5 text-xs font-bold uppercase tracking-wider text-text-dim border border-border/30 rounded hover:border-green hover:text-green transition-all duration-200 cursor-pointer bg-transparent shrink-0"
+              className="py-1.5 px-2 text-xs font-bold uppercase tracking-wider text-text-dim border border-[#1e2a35]/60 rounded hover:border-green hover:text-green transition-all duration-300 cursor-pointer bg-transparent shrink-0"
             >
               Max
             </button>
             <button
               onClick={handleAction}
               disabled={status === "submitting" || status === "success"}
-              className={`py-1 px-3 text-xs font-bold uppercase tracking-wider border rounded transition-all duration-200 cursor-pointer bg-transparent ${
+              className={`py-1.5 px-3 text-xs font-bold uppercase tracking-wider border rounded transition-all duration-300 cursor-pointer bg-transparent ${
                 status === "confirming"
-                  ? "border-red text-red animate-pulse"
+                  ? "border-red text-red animate-pulse shadow-[0_0_8px_rgba(255,0,64,0.2)]"
                   : status === "submitting"
                   ? "border-amber/40 text-amber opacity-70 cursor-not-allowed"
                   : mode === "deposit"
-                  ? "border-green/40 text-green hover:border-green"
-                  : "border-amber/40 text-amber hover:border-amber"
+                  ? "border-green/40 text-green hover:border-green hover:shadow-[0_0_8px_rgba(0,255,65,0.15)]"
+                  : "border-amber/40 text-amber hover:border-amber hover:shadow-[0_0_8px_rgba(255,176,0,0.15)]"
               }`}
             >
               {status === "confirming" ? "Sure?" : status === "submitting" ? "..." : "OK"}
@@ -244,24 +246,24 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
             <button
               onClick={reset}
               disabled={status === "submitting"}
-              className="py-1 px-2 text-xs text-text-dim border border-border/30 rounded hover:border-border cursor-pointer bg-transparent"
+              className="py-1.5 px-2 text-xs text-text-dim border border-[#1e2a35]/60 rounded hover:border-red/40 hover:text-red cursor-pointer bg-transparent transition-all duration-300"
             >
-              ✕
+              &#10005;
             </button>
           </div>
 
           {/* Result messages */}
           {status === "success" && (
-            <div className="text-green text-xs">
+            <div className="text-green text-xs px-2 py-1 rounded bg-green/5 border border-green/20">
               {resultMsg}
               {txHash && (
                 <>
-                  {" — "}
+                  {" \u2014 "}
                   <a
                     href={`https://arbiscan.io/tx/${txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-amber underline hover:text-green"
+                    className="text-amber underline hover:text-green transition-colors duration-200"
                   >
                     arbiscan
                   </a>
@@ -270,7 +272,7 @@ function ArbWalletSection({ hlAvailable }: { hlAvailable: number }) {
             </div>
           )}
           {status === "error" && (
-            <div className="text-red text-xs">{resultMsg}</div>
+            <div className="text-red text-xs px-2 py-1 rounded bg-red/5 border-l-2 border-red/40">{resultMsg}</div>
           )}
         </div>
       )}
@@ -309,8 +311,9 @@ function TradingHistory({ address, onViewTrader }: { address: string; onViewTrad
   timeline.sort((a, b) => b.time - a.time);
 
   return (
-    <div className="border-t border-border/30 pt-3">
-      <div className="text-text-dim text-xs uppercase tracking-wider mb-3">
+    <div className="border-t border-[#1e2a35]/60 pt-3">
+      <div className="text-text-dim text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+        <span className="inline-block w-1 h-1 rounded-full bg-text-dim/60" />
         Recent Trades {fills ? `(${fills.length})` : ""}
       </div>
 
@@ -321,7 +324,7 @@ function TradingHistory({ address, onViewTrader }: { address: string; onViewTrad
       )}
 
       {error && (
-        <div className="text-red text-xs py-2">
+        <div className="text-red text-xs py-2 px-2 bg-red/5 border-l-2 border-red/40 rounded-r">
           ERR: {(error as Error).message}
         </div>
       )}
@@ -333,7 +336,7 @@ function TradingHistory({ address, onViewTrader }: { address: string; onViewTrad
       )}
 
       {timeline.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-0.5 border-l border-[#1e2a35]/40 ml-1">
           {timeline.map((item, i) => {
             if (item.kind === "fill") {
               const fill = item.data;
@@ -347,7 +350,7 @@ function TradingHistory({ address, onViewTrader }: { address: string; onViewTrad
               return (
                 <div
                   key={`fill-${fill.hash}-${i}`}
-                  className="flex items-center justify-between py-1 text-xs group"
+                  className="flex items-center justify-between py-1.5 pl-3 text-xs group hover:bg-[#151b23]/30 transition-colors duration-200 rounded-r"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-amber font-bold">{fill.coin}</span>
@@ -394,13 +397,13 @@ function TradingHistory({ address, onViewTrader }: { address: string; onViewTrad
             return (
               <div
                 key={`follow-${event.id}`}
-                className="flex items-center justify-between py-1 text-xs"
+                className="flex items-center justify-between py-1.5 pl-3 text-xs hover:bg-[#151b23]/30 transition-colors duration-200 rounded-r"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`${colorClass} font-bold`}>{label}</span>
                   <button
                     onClick={() => onViewTrader(event.targetWallet)}
-                    className="text-amber hover:text-green hover:underline bg-transparent border-none p-0 cursor-pointer text-xs tabular-nums"
+                    className="text-amber hover:text-green hover:underline bg-transparent border-none p-0 cursor-pointer text-xs tabular-nums transition-colors duration-200"
                   >
                     {shortenAddress(event.targetWallet)}
                   </button>
@@ -504,18 +507,18 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
   };
 
   const btnClasses = (): string => {
-    const base = "w-full py-2 px-3 text-xs font-bold uppercase tracking-wider border rounded transition-all duration-200 cursor-pointer";
+    const base = "w-full py-2.5 px-3 text-xs font-bold uppercase tracking-wider border rounded transition-all duration-300 cursor-pointer";
     switch (btnState) {
       case "idle":
-        return `${base} border-red/40 text-red hover:border-red hover:bg-red/10`;
+        return `${base} border-red/30 text-red hover:border-red hover:bg-red/10 hover:shadow-[0_0_12px_rgba(255,0,64,0.15)] bg-transparent`;
       case "confirm":
-        return `${base} border-red text-red bg-red/10 animate-pulse`;
+        return `${base} border-red text-red bg-red/10 animate-pulse shadow-[0_0_12px_rgba(255,0,64,0.2)]`;
       case "closing":
-        return `${base} border-amber/40 text-amber opacity-70 cursor-not-allowed`;
+        return `${base} border-amber/40 text-amber opacity-70 cursor-not-allowed bg-transparent`;
       case "closed":
-        return `${base} border-green/40 text-green`;
+        return `${base} border-green/40 text-green bg-green/5`;
       case "error":
-        return `${base} border-red text-red`;
+        return `${base} border-red text-red bg-red/5`;
     }
   };
 
@@ -531,7 +534,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
         )}
 
         {error && (
-          <div className="text-red text-xs py-4">
+          <div className="text-red text-xs py-4 px-2 bg-red/5 border-l-2 border-red/40 rounded-r">
             ERR: {(error as Error).message}
           </div>
         )}
@@ -539,7 +542,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
         {data && (
           <>
             {/* Wallet address */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2.5 rounded border-l-2 border-amber/40 bg-[#151b23]/40">
               <span className="text-text-dim text-xs uppercase tracking-wider">Wallet</span>
               <span className="text-amber text-xs flex items-center gap-1">
                 {shortenAddress(data.address)}
@@ -548,19 +551,19 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             </div>
 
             {/* Currently following */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2.5 rounded bg-[#151b23]/20">
               <span className="text-text-dim text-xs uppercase tracking-wider">Following</span>
               {isSwitching ? (
-                <span className="text-amber text-xs flex items-center gap-1 animate-pulse">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber shrink-0" />
+                <span className="text-amber text-xs flex items-center gap-1.5 animate-pulse">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber shrink-0" style={{ boxShadow: '0 0 6px rgba(255,176,0,0.5)' }} />
                   switching...
                 </span>
               ) : botStatus?.running && botStatus.targetWallet ? (
                 <button
                   onClick={() => onViewTrader(botStatus.targetWallet!)}
-                  className="text-green text-xs flex items-center gap-1 hover:underline bg-transparent border-none p-0 cursor-pointer"
+                  className="text-green text-xs flex items-center gap-1.5 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors duration-200"
                 >
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green shrink-0" />
+                  <span className="inline-block w-2 h-2 rounded-full bg-green shrink-0" style={{ boxShadow: '0 0 8px rgba(0,255,65,0.6)' }} />
                   {shortenAddress(botStatus.targetWallet)}
                   <CopyButton text={botStatus.targetWallet} />
                 </button>
@@ -570,27 +573,28 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             </div>
 
             {/* ARB WALLET */}
-            <div className="border-t border-border/30 pt-3">
-              <div className="text-text-dim text-xs uppercase tracking-wider mb-2">
+            <div className="rounded border border-[#1e2a35]/40 bg-[#151b23]/30 p-3" style={{ borderTop: '2px solid rgba(255,176,0,0.4)' }}>
+              <div className="text-amber text-xs uppercase tracking-wider mb-2.5 font-bold flex items-center gap-1.5">
+                <span className="inline-block w-1 h-3 rounded-sm bg-amber/50" />
                 Arb Wallet
               </div>
               <ArbWalletSection hlAvailable={parseFloat(data.totalRawUsd)} />
             </div>
 
-            <div className="border-t border-border/30" />
+            <div className="border-t border-[#1e2a35]/40" />
 
-            {/* Account Value — prominent */}
-            <div className="flex items-center justify-between">
+            {/* Account Value -- prominent */}
+            <div className="flex items-center justify-between p-2 rounded bg-[#151b23]/20">
               <span className="text-text-dim text-xs uppercase tracking-wider">Account Value</span>
-              <span className="text-green text-lg tabular-nums font-bold">
+              <span className="text-green text-xl tabular-nums font-bold" style={{ textShadow: '0 0 12px rgba(0,255,65,0.25)' }}>
                 {formatUSD(parseFloat(data.accountValue))}
               </span>
             </div>
 
             {/* Unrealized PNL */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2 rounded">
               <span className="text-text-dim text-xs uppercase tracking-wider">Unrealized PNL</span>
-              <span className={`text-base tabular-nums font-bold ${data.totalUnrealizedPnl >= 0 ? "text-green" : "text-red"}`}>
+              <span className={`text-base tabular-nums font-bold px-2 py-0.5 rounded ${data.totalUnrealizedPnl >= 0 ? "text-green bg-green/5" : "text-red bg-red/5"}`}>
                 {formatPnl(data.totalUnrealizedPnl)}
               </span>
             </div>
@@ -598,15 +602,15 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             {/* Realized PNL */}
             {pnlData && (
               <>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-2 rounded">
                   <span className="text-text-dim text-xs uppercase tracking-wider">All-Time PNL</span>
-                  <span className={`text-base tabular-nums font-bold ${pnlData.pnl.allTime >= 0 ? "text-green" : "text-red"}`}>
+                  <span className={`text-base tabular-nums font-bold px-2 py-0.5 rounded ${pnlData.pnl.allTime >= 0 ? "text-green bg-green/5" : "text-red bg-red/5"}`}>
                     {formatPnl(pnlData.pnl.allTime)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-2 rounded">
                   <span className="text-text-dim text-xs uppercase tracking-wider">Month PNL</span>
-                  <span className={`text-base tabular-nums font-bold ${pnlData.pnl.month >= 0 ? "text-green" : "text-red"}`}>
+                  <span className={`text-base tabular-nums font-bold px-2 py-0.5 rounded ${pnlData.pnl.month >= 0 ? "text-green bg-green/5" : "text-red bg-red/5"}`}>
                     {formatPnl(pnlData.pnl.month)}
                   </span>
                 </div>
@@ -614,7 +618,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             )}
 
             {/* Margin Used */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2 rounded">
               <span className="text-text-dim text-xs uppercase tracking-wider">Margin Used</span>
               <span className="text-amber text-sm tabular-nums">
                 {formatUSD(parseFloat(data.totalMarginUsed))}
@@ -622,16 +626,17 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
             </div>
 
             {/* Available */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2 rounded">
               <span className="text-text-dim text-xs uppercase tracking-wider">Available</span>
               <span className="text-text text-sm tabular-nums">
-                {formatUSD(parseFloat(data.totalRawUsd))}
+                {formatUSD(parseFloat(data.accountValue) - parseFloat(data.totalMarginUsed))}
               </span>
             </div>
 
             {/* Positions */}
-            <div className="border-t border-border/30 pt-3">
-              <div className="text-text-dim text-xs uppercase tracking-wider mb-3">
+            <div className="border-t border-[#1e2a35]/40 pt-3">
+              <div className="text-text-dim text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span className="inline-block w-1 h-1 rounded-full bg-text-dim/60" />
                 Positions ({data.positions.length})
               </div>
 
@@ -642,18 +647,18 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
               )}
 
               {data.positions.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {data.positions.map((pos) => {
                     const size = parseFloat(pos.szi);
                     const isLong = size > 0;
                     const pnl = parseFloat(pos.unrealizedPnl);
                     return (
-                      <div key={pos.coin} className="group">
+                      <div key={pos.coin} className="group rounded border border-[#1e2a35]/30 bg-[#151b23]/20 p-2.5 transition-all duration-200 hover:bg-[#151b23]/40" style={{ borderLeft: `2px solid ${isLong ? 'rgba(0,255,65,0.4)' : 'rgba(255,0,64,0.4)'}` }}>
                         {/* Line 1: Coin + direction + leverage + PNL + Close */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-amber font-bold text-sm">{pos.coin}</span>
-                            <span className={`text-xs ${isLong ? "text-green" : "text-red"}`}>
+                            <span className={`text-xs px-1.5 py-0.5 rounded text-[10px] font-bold ${isLong ? "text-green bg-green/10" : "text-red bg-red/10"}`}>
                               {isLong ? "LONG" : "SHORT"}
                             </span>
                             <span className="text-text-dim text-xs">{pos.leverage}x</span>
@@ -668,9 +673,10 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
                             />
                           </div>
                         </div>
-                        {/* Line 2: Size + Entry (indented) */}
-                        <div className="flex items-center justify-between mt-0.5 pl-4 text-xs text-text-dim">
+                        {/* Line 2: Size + Notional + Entry (indented) */}
+                        <div className="flex items-center justify-between mt-1 pl-4 text-xs text-text-dim">
                           <span className="tabular-nums">{Math.abs(size).toFixed(4)}</span>
+                          <span className="text-text tabular-nums">{formatUSD(Math.abs(size) * parseFloat(pos.entryPx))}</span>
                           <span className="tabular-nums">@ ${parseFloat(pos.entryPx).toFixed(2)}</span>
                         </div>
                       </div>
@@ -682,7 +688,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
 
             {/* Close All Positions button */}
             {hasPositions && (
-              <div className="border-t border-border/30 pt-3">
+              <div className="border-t border-[#1e2a35]/40 pt-3">
                 <button
                   onClick={handleClick}
                   disabled={btnState === "closing" || btnState === "closed"}
@@ -691,7 +697,7 @@ export function MyAccount({ botStatus, onViewTrader, isSwitching }: MyAccountPro
                   {btnLabel()}
                 </button>
                 {btnState === "error" && errorMsg && (
-                  <div className="text-red text-xs mt-2 break-words">
+                  <div className="text-red text-xs mt-2 break-words px-2 py-1 bg-red/5 border-l-2 border-red/40 rounded-r">
                     {errorMsg}
                   </div>
                 )}

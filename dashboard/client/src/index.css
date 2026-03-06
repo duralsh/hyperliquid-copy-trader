@@ -4,11 +4,15 @@
   --color-bg: #0a0e14;
   --color-bg-secondary: #0f1419;
   --color-bg-tertiary: #151b23;
+  --color-bg-elevated: #1a2332;
   --color-border: #1e2a35;
   --color-green: #00ff41;
   --color-green-dim: #00cc33;
+  --color-green-glow: rgba(0, 255, 65, 0.15);
   --color-amber: #ffb000;
+  --color-amber-glow: rgba(255, 176, 0, 0.15);
   --color-red: #ff0040;
+  --color-cyan: #00d4ff;
   --color-text: #b0c4d8;
   --color-text-dim: #5a7a94;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
@@ -28,10 +32,12 @@
   font-display: swap;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
 
 body {
@@ -39,6 +45,20 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text);
   min-height: 100vh;
+}
+
+/* Noise texture overlay on body */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image:
+    repeating-conic-gradient(#b0c4d8 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
+    repeating-conic-gradient(#b0c4d8 0% 25%, transparent 0% 50%) 2px 2px / 4px 4px;
+  mix-blend-mode: overlay;
 }
 
 #root {
@@ -77,7 +97,7 @@ body {
   }
 }
 
-/* Scanline overlay effect */
+/* Scanline overlay effect — smoother, subtler */
 .scanlines::before {
   content: "";
   position: absolute;
@@ -85,32 +105,44 @@ body {
   background: repeating-linear-gradient(
     0deg,
     transparent,
-    transparent 2px,
-    rgba(0, 255, 65, 0.015) 2px,
-    rgba(0, 255, 65, 0.015) 4px
+    transparent 3px,
+    rgba(0, 255, 65, 0.012) 3px,
+    rgba(0, 255, 65, 0.012) 6px
   );
   pointer-events: none;
   z-index: 10;
+  opacity: 0.8;
 }
 
-/* Blinking cursor */
+/* Blinking cursor with glow */
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%, 100% { opacity: 1; text-shadow: 0 0 6px var(--color-green); }
+  50% { opacity: 0; text-shadow: none; }
 }
 
 .cursor-blink {
   animation: blink 1s step-end infinite;
 }
 
-/* Row hover — subtle left green border accent */
+/* Glow pulse animation */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 4px var(--color-green), 0 0 8px rgba(0, 255, 65, 0.3); }
+  50% { box-shadow: 0 0 8px var(--color-green), 0 0 16px rgba(0, 255, 65, 0.5); }
+}
+
+@keyframes glow-pulse-amber {
+  0%, 100% { box-shadow: 0 0 4px var(--color-amber), 0 0 8px rgba(255, 176, 0, 0.3); }
+  50% { box-shadow: 0 0 8px var(--color-amber), 0 0 16px rgba(255, 176, 0, 0.5); }
+}
+
+/* Row hover — subtle left green gradient border accent */
 .row-hover-accent {
   border-left: 2px solid transparent;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .row-hover-accent:hover {
-  border-left-color: var(--color-green);
-  background-color: rgba(0, 255, 65, 0.03);
+  border-image: linear-gradient(to bottom, var(--color-green), var(--color-cyan)) 1;
+  background: linear-gradient(90deg, rgba(0, 255, 65, 0.04) 0%, transparent 40%);
 }
 
 /* Alternating row backgrounds */
@@ -126,34 +158,48 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Token ticker animation */
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+/* Token ticker — manual scroll, hidden scrollbar */
+.ticker-track::-webkit-scrollbar {
+  display: none;
 }
 
-.ticker-track {
-  display: flex;
-  width: 100%;
-  overflow: hidden;
+/* Glassmorphism panel utility */
+.glass {
+  background: linear-gradient(135deg, rgba(15, 20, 25, 0.85) 0%, rgba(10, 14, 20, 0.95) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 42, 53, 0.6);
 }
 
-.ticker-track:hover .ticker-content {
-  animation-play-state: paused;
+/* Glow utilities */
+.glow-green {
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.25), 0 0 20px rgba(0, 255, 65, 0.1);
 }
 
-.ticker-content {
-  display: flex;
-  width: max-content;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 24px;
-  animation: ticker-scroll 120s linear infinite;
-  font-size: 0.75rem;
-  will-change: transform;
+.glow-amber {
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.25), 0 0 20px rgba(255, 176, 0, 0.1);
 }
 
-/* Scrollbar styling */
+/* Premium card with top accent border and hover lift */
+.card-premium {
+  background: linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border);
+  border-top: 2px solid var(--color-green);
+  border-radius: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-premium:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(0, 255, 65, 0.06);
+}
+
+/* Gradient border utility */
+.gradient-border {
+  border-image: linear-gradient(135deg, var(--color-green), var(--color-cyan)) 1;
+}
+
+/* Scrollbar styling — polished with rounded thumb and hover glow */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -161,13 +207,20 @@ body {
 
 ::-webkit-scrollbar-track {
   background: var(--color-bg);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
   border-radius: 3px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-border) 0%, rgba(30, 42, 53, 0.6) 100%);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-dim);
+  background: linear-gradient(180deg, var(--color-text-dim) 0%, var(--color-border) 100%);
+  box-shadow: 0 0 4px rgba(0, 255, 65, 0.15);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--color-bg);
 }

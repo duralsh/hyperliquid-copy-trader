@@ -27,12 +27,12 @@ function StopCopyButton() {
       onMouseLeave={() => setHovered(false)}
       onClick={() => stopBot.mutate()}
       disabled={stopBot.isPending}
-      className={`w-full py-4 font-bold text-sm rounded tracking-wider text-center transition-all cursor-pointer border ${
+      className={`w-full py-4 font-bold text-sm rounded tracking-wider text-center transition-all duration-200 cursor-pointer border ${
         stopBot.isPending
           ? "bg-amber/15 border-amber/40 text-amber opacity-70 cursor-not-allowed"
           : hovered
-            ? "bg-red/15 border-red/40 text-red shadow-[0_0_20px_rgba(255,0,64,0.2)]"
-            : "bg-green/15 border-green/40 text-green"
+            ? "bg-red/15 border-red/40 text-red shadow-[0_0_20px_rgba(255,0,64,0.2),inset_0_1px_0_rgba(255,0,64,0.1)]"
+            : "bg-green/15 border-green/40 text-green shadow-[0_0_12px_rgba(0,255,65,0.1),inset_0_1px_0_rgba(0,255,65,0.1)]"
       }`}
     >
       {stopBot.isPending
@@ -66,12 +66,23 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
   const resolved = lookupData ?? trader;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[500px] bg-bg-secondary border-l border-border shadow-2xl z-50 flex flex-col overflow-hidden">
+    <div
+      className="fixed inset-y-0 right-0 w-[500px] bg-bg-secondary border-l border-border z-50 flex flex-col overflow-hidden"
+      style={{
+        boxShadow: "-8px 0 30px rgba(0,0,0,0.5), -2px 0 8px rgba(0,0,0,0.3)",
+        borderLeft: "1px solid transparent",
+        borderImage: "linear-gradient(180deg, #00ff4140, #1e2a35, #1e2a35, #00ff4120) 1",
+        backdropFilter: "blur(12px)",
+      }}
+    >
       {/* Header */}
-      <div className="p-4 border-b border-border flex items-center justify-between">
+      <div
+        className="p-4 border-b border-border flex items-center justify-between"
+        style={{ background: "linear-gradient(180deg, rgba(15,20,25,0.9) 0%, rgba(10,14,20,0.6) 100%)" }}
+      >
         <div>
           <div className="text-green text-sm">
-            {">"} trader_detail<span className="cursor-blink">█</span>
+            <span style={{ textShadow: "0 0 8px rgba(0,255,65,0.3)" }}>{">"}</span> trader_detail<span className="cursor-blink">█</span>
           </div>
           <div className="text-amber text-lg mt-1 flex items-center gap-1.5">
             <StarButton active={isFavorite} onClick={onToggleFavorite} />
@@ -84,7 +95,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
         </div>
         <button
           onClick={onClose}
-          className="text-text-dim hover:text-red p-1.5 rounded hover:bg-red/10 transition-colors"
+          className="text-text-dim hover:text-red p-1.5 rounded hover:bg-red/10 transition-all duration-200 hover:shadow-[0_0_8px_rgba(255,0,64,0.15)]"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="4" y1="4" x2="12" y2="12" />
@@ -96,26 +107,26 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
       {/* Account summary */}
       <div className="p-4 border-b border-border">
         <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <div className="text-text-dim">ACCOUNT VALUE</div>
+          <div className="bg-bg/50 border border-border/40 rounded-lg p-3 transition-all duration-200 hover:border-green/20 hover:shadow-[0_0_10px_rgba(0,255,65,0.05)]">
+            <div className="text-text-dim text-[10px] tracking-wider mb-1">ACCOUNT VALUE</div>
             <div className="text-green text-lg tabular-nums">{formatUSD(data ? parseFloat(data.accountValue) : resolved.accountValue)}</div>
           </div>
           {data && (
             <>
-              <div>
-                <div className="text-text-dim">MARGIN USED</div>
+              <div className="bg-bg/50 border border-border/40 rounded-lg p-3 transition-all duration-200 hover:border-amber/20 hover:shadow-[0_0_10px_rgba(255,176,0,0.05)]">
+                <div className="text-text-dim text-[10px] tracking-wider mb-1">MARGIN USED</div>
                 <div className="text-amber text-lg tabular-nums">{formatUSD(parseFloat(data.totalMarginUsed))}</div>
               </div>
             </>
           )}
-          <div>
-            <div className="text-text-dim">ALL-TIME PNL</div>
+          <div className="bg-bg/50 border border-border/40 rounded-lg p-3 transition-all duration-200 hover:border-green/20 hover:shadow-[0_0_10px_rgba(0,255,65,0.05)]">
+            <div className="text-text-dim text-[10px] tracking-wider mb-1">ALL-TIME PNL</div>
             <div className={`text-lg tabular-nums ${resolved.pnl.allTime >= 0 ? "text-green" : "text-red"}`}>
               {formatPnl(resolved.pnl.allTime)}
             </div>
           </div>
-          <div>
-            <div className="text-text-dim">MONTH PNL</div>
+          <div className="bg-bg/50 border border-border/40 rounded-lg p-3 transition-all duration-200 hover:border-green/20 hover:shadow-[0_0_10px_rgba(0,255,65,0.05)]">
+            <div className="text-text-dim text-[10px] tracking-wider mb-1">MONTH PNL</div>
             <div className={`text-lg tabular-nums ${resolved.pnl.month >= 0 ? "text-green" : "text-red"}`}>
               {formatPnl(resolved.pnl.month)}
             </div>
@@ -134,10 +145,10 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
         ) : (
           <button
             onClick={() => onCopy({ targetWallet: trader.address })}
-            className={`w-full py-4 font-bold transition-colors text-sm rounded tracking-wider ${
+            className={`w-full py-4 font-bold transition-all duration-200 text-sm rounded tracking-wider ${
               activeCopyTarget
-                ? "bg-amber text-bg hover:bg-amber/85 shadow-[0_0_20px_rgba(255,176,0,0.3)] hover:shadow-[0_0_30px_rgba(255,176,0,0.5)]"
-                : "bg-green text-bg hover:bg-green/85 shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
+                ? "bg-amber text-bg hover:bg-amber/85 shadow-[0_0_20px_rgba(255,176,0,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,176,0,0.5),inset_0_1px_0_rgba(255,255,255,0.2)]"
+                : "bg-green text-bg hover:bg-green/85 shadow-[0_0_20px_rgba(0,255,65,0.3),inset_0_1px_0_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5),inset_0_1px_0_rgba(255,255,255,0.2)]"
             }`}
           >
             {activeCopyTarget ? "> SWITCH TO THIS TRADER _" : "> COPY THIS TRADER _"}
@@ -148,11 +159,11 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
       {/* Positions */}
       <div className="flex-1 overflow-auto p-4">
         <div className="text-text-dim text-xs mb-2">
-          {">"} OPEN POSITIONS {data ? `[${data.positions.length}]` : ""}
+          <span className="text-green" style={{ textShadow: "0 0 6px rgba(0,255,65,0.4)" }}>{">"}</span> OPEN POSITIONS {data ? `[${data.positions.length}]` : ""}
         </div>
 
         {isLoading && (
-          <div className="text-green text-xs py-4">Loading positions...</div>
+          <div className="text-green text-xs py-4 animate-pulse">Loading positions...</div>
         )}
 
         {error && (
@@ -172,17 +183,21 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
           return (
             <div
               key={pos.coin}
-              className="border border-border/50 rounded p-3 mb-2 hover:border-green/30 transition-colors"
+              className="border border-border/40 rounded-lg p-3 mb-2 hover:border-green/30 transition-all duration-200 bg-bg/30 hover:bg-bg/50"
+              style={{
+                borderLeft: `3px solid ${isLong ? "rgba(0,255,65,0.5)" : "rgba(255,0,64,0.5)"}`,
+                boxShadow: `inset 3px 0 8px ${isLong ? "rgba(0,255,65,0.03)" : "rgba(255,0,64,0.03)"}`,
+              }}
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-amber font-bold text-sm">{pos.coin}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${isLong ? "bg-green/10 text-green" : "bg-red/10 text-red"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${isLong ? "bg-green/10 text-green border-green/20" : "bg-red/10 text-red border-red/20"}`}>
                     {isLong ? "LONG" : "SHORT"}
                   </span>
                   <span className="text-text-dim text-xs">{pos.leverage}x</span>
                 </div>
-                <span className={`text-xs tabular-nums ${pnl >= 0 ? "text-green" : "text-red"}`}>
+                <span className={`text-xs tabular-nums font-bold ${pnl >= 0 ? "text-green" : "text-red"}`}>
                   {formatPnl(pnl)}
                 </span>
               </div>
@@ -220,11 +235,11 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
 
         {/* Recent Trades */}
         <div className="text-text-dim text-xs mb-2 mt-4">
-          {">"} RECENT TRADES {fills ? `[${fills.length}]` : ""}
+          <span className="text-green" style={{ textShadow: "0 0 6px rgba(0,255,65,0.4)" }}>{">"}</span> RECENT TRADES {fills ? `[${fills.length}]` : ""}
         </div>
 
         {fillsLoading && (
-          <div className="text-green text-xs py-4">Loading fills...</div>
+          <div className="text-green text-xs py-4 animate-pulse">Loading fills...</div>
         )}
 
         {fillsError && (
@@ -236,9 +251,12 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
         )}
 
         {fills && fills.length > 0 && (
-          <div className="border border-border/50 rounded overflow-hidden">
+          <div className="border border-border/40 rounded-lg overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-1.5 text-[10px] text-text-dim border-b border-border/50 bg-bg/50">
+            <div
+              className="grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-2 text-[10px] text-text-dim border-b border-border/40 font-bold tracking-wider"
+              style={{ background: "linear-gradient(180deg, rgba(15,20,25,0.8) 0%, rgba(10,14,20,0.4) 100%)" }}
+            >
               <div>TIME</div>
               <div>COIN</div>
               <div>DIR</div>
@@ -259,7 +277,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
               return (
                 <div
                   key={fill.hash + i}
-                  className={`grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-1 text-[10px] ${i % 2 === 0 ? "bg-bg/30" : "bg-bg-secondary/50"}`}
+                  className={`grid grid-cols-[4rem_3.5rem_3.5rem_3.5rem_4.5rem_4rem_3rem] gap-1 px-2 py-1.5 text-[10px] transition-all duration-100 hover:bg-white/[0.02] ${i % 2 === 0 ? "bg-bg/30" : "bg-bg-secondary/50"}`}
                 >
                   <div className="text-text-dim tabular-nums truncate">{formatTimeAgo(fill.time)}</div>
                   <div className="text-amber tabular-nums">{fill.coin}</div>
@@ -267,7 +285,7 @@ export function TraderDetailPanel({ trader, onClose, onCopy, activeCopyTarget, i
                   <div className="text-text tabular-nums">{parseFloat(fill.sz).toFixed(4)}</div>
                   <div className="text-text tabular-nums">${parseFloat(fill.px).toFixed(2)}</div>
                   <div className={`tabular-nums ${isClose ? (closedPnl >= 0 ? "text-green" : "text-red") : "text-text-dim"}`}>
-                    {isClose ? formatPnl(closedPnl) : "—"}
+                    {isClose ? formatPnl(closedPnl) : "---"}
                   </div>
                   <div className="text-text-dim tabular-nums">${fee.toFixed(2)}</div>
                 </div>

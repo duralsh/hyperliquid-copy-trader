@@ -22,6 +22,14 @@ function levelColor(text: string): string {
   return "text-text";
 }
 
+function levelBorderColor(text: string): string {
+  if (text.includes("[ERROR]")) return "border-l-red/50";
+  if (text.includes("[WARN]")) return "border-l-amber/50";
+  if (text.includes("[INFO]")) return "border-l-green/30";
+  if (text.includes("[DEBUG]")) return "border-l-[#1e2a35]/40";
+  return "border-l-transparent";
+}
+
 export function DockerLogs({ logs }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -63,24 +71,24 @@ export function DockerLogs({ logs }: Props) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1e2a35]/60 shrink-0 bg-gradient-to-r from-[#0f1419] to-[#0a0e14]">
         <span className="text-text-dim text-xs tabular-nums">
           {visibleLogs.length} lines
         </span>
         <div className="flex items-center gap-2">
           <button
             onClick={togglePause}
-            className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+            className={`text-xs px-3 py-1 rounded border transition-all duration-300 font-bold tracking-wider ${
               paused
-                ? "text-amber border-amber/40 bg-amber/10"
-                : "text-text-dim border-border hover:text-text"
+                ? "text-amber border-amber/40 bg-amber/10 shadow-[0_0_8px_rgba(255,176,0,0.15)]"
+                : "text-text-dim border-[#1e2a35] hover:text-text hover:border-[#5a7a94]/40 hover:bg-[#151b23]/30"
             }`}
           >
             {paused ? "RESUME" : "PAUSE"}
           </button>
           <button
             onClick={handleClear}
-            className="text-xs px-2 py-0.5 rounded border border-border text-text-dim hover:text-red hover:border-red/40 transition-colors"
+            className="text-xs px-3 py-1 rounded border border-[#1e2a35] text-text-dim hover:text-red hover:border-red/40 hover:bg-red/5 transition-all duration-300 font-bold tracking-wider"
           >
             CLEAR
           </button>
@@ -96,7 +104,7 @@ export function DockerLogs({ logs }: Props) {
         {visibleLogs.length === 0 && (
           <div className="text-text-dim text-xs text-center py-8">
             {logs.length === 0
-              ? "no logs — container may not be running"
+              ? "no logs \u2014 container may not be running"
               : "cleared"}
           </div>
         )}
@@ -104,11 +112,11 @@ export function DockerLogs({ logs }: Props) {
         {visibleLogs.map((entry, i) => (
           <div
             key={i}
-            className={`px-4 py-0.5 text-[11px] leading-relaxed whitespace-pre-wrap break-all ${
-              entry.stream === "stderr" ? "bg-red/5" : ""
-            }`}
+            className={`px-4 py-0.5 text-[11px] leading-relaxed whitespace-pre-wrap break-all border-l-2 ${levelBorderColor(entry.text)} ${
+              entry.stream === "stderr" ? "bg-red/5" : "hover:bg-[#151b23]/20"
+            } transition-colors duration-150`}
           >
-            <span className="text-text-dim">{formatTime(entry.time)}</span>
+            <span className="text-text-dim/70 tabular-nums">{formatTime(entry.time)}</span>
             {" "}
             <span className={levelColor(entry.text)}>{entry.text}</span>
           </div>
@@ -124,7 +132,7 @@ export function DockerLogs({ logs }: Props) {
               scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
             }
           }}
-          className="absolute bottom-2 right-4 text-xs px-3 py-1 rounded bg-green/15 text-green border border-green/30 hover:bg-green/25 transition-colors"
+          className="absolute bottom-2 right-4 text-xs px-3 py-1.5 rounded bg-green/10 text-green border border-green/30 hover:bg-green/20 hover:shadow-[0_0_12px_rgba(0,255,65,0.2)] transition-all duration-300 font-bold tracking-wider backdrop-blur-sm"
         >
           scroll to bottom
         </button>

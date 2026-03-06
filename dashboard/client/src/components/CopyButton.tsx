@@ -22,8 +22,8 @@ export function CopyButton({ text, className = "" }: Props) {
     <button
       onClick={handleCopy}
       title={copied ? "Copied!" : `Copy ${text}`}
-      className={`inline-flex items-center justify-center shrink-0 transition-colors duration-150 ${
-        copied ? "text-green" : "text-text-dim hover:text-amber"
+      className={`inline-flex items-center justify-center shrink-0 transition-all duration-200 ${
+        copied ? "text-green" : "text-text-dim hover:text-amber hover:scale-110"
       } ${className}`}
     >
       {copied ? (

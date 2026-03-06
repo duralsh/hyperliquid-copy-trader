@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { useTokenPrices } from "../hooks/useTokenPrices.js";
 import type { TokenPrice } from "../../../shared/types.js";
 
@@ -43,7 +44,9 @@ function TokenItem({ token }: { token: TokenPrice }) {
   const changeColor = token.change2h >= 0 ? "text-green" : "text-red";
 
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded border border-border bg-bg-tertiary px-3 py-1">
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded border border-border/60 bg-bg-tertiary px-3 py-1 transition-all duration-200 hover:border-border"
+    >
       {token.iconUrl && (
         <img
           src={token.iconUrl}
@@ -64,6 +67,65 @@ function TokenItem({ token }: { token: TokenPrice }) {
   );
 }
 
+function ScrollingTicker({ prices }: { prices: TokenPrice[] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const hovering = useRef(false);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    let rafId = 0;
+    let accum = 0;
+
+    const tick = () => {
+      if (!hovering.current) {
+        accum += 0.5;
+        if (accum >= 1) {
+          const px = Math.floor(accum);
+          accum -= px;
+          el.scrollLeft += px;
+          if (el.scrollWidth > 0 && el.scrollLeft >= el.scrollWidth / 2) {
+            el.scrollLeft -= el.scrollWidth / 2;
+          }
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY + e.deltaX;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      el.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={trackRef}
+      onMouseEnter={() => { hovering.current = true; }}
+      onMouseLeave={() => { hovering.current = false; }}
+      className="h-10 bg-bg border-b border-border/20 shrink-0 flex items-center gap-3 px-4 ticker-track"
+      style={{ overflowX: "scroll", overflowY: "hidden", scrollbarWidth: "none", width: "100%", maxWidth: "100vw" }}
+      aria-label="Token price ticker"
+    >
+      {[0, 1].map((copy) =>
+        prices.map((token) => (
+          <span key={`${copy}-${token.coin}`} className="inline-flex items-center shrink-0">
+            <TokenItem token={token} />
+          </span>
+        ))
+      )}
+    </div>
+  );
+}
+
 export function TokenTicker() {
   const { data: prices, isLoading, isError } = useTokenPrices();
 
@@ -73,22 +135,5 @@ export function TokenTicker() {
     );
   }
 
-  const renderList = (keyPrefix: string) =>
-    prices.map((token) => (
-      <span key={`${keyPrefix}-${token.coin}`} className="inline-flex items-center">
-        <TokenItem token={token} />
-      </span>
-    ));
-
-  return (
-    <div
-      className="h-10 bg-bg border-b border-border/20 shrink-0 overflow-hidden flex items-center ticker-track"
-      aria-label="Token price ticker"
-    >
-      <div className="ticker-content">
-        {renderList("a")}
-        {renderList("b")}
-      </div>
-    </div>
-  );
+  return <ScrollingTicker prices={prices} />;
 }

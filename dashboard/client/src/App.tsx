@@ -15,7 +15,7 @@ import type { TraderSummary, BotConfig, LeaderboardResponse } from "../../shared
 const queryClient = new QueryClient();
 
 function Dashboard() {
-  const { connected, botStatus, trades, dockerLogs, isSwitching } = useWebSocket();
+  const { connected, botStatus, trades, isSwitching } = useWebSocket();
   const { favoriteTraders, isFavorite, toggleFavorite, refreshFavorites } = useFavorites();
   const { user, isAuthenticated, logout } = useAuth();
   const qc = useQueryClient();
@@ -51,11 +51,17 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-bg overflow-hidden">
-      {/* Header — slim 36px bar */}
-      <header className="relative border-b border-border/30 bg-bg-secondary px-4 py-2 shrink-0 h-9 flex items-center">
+      {/* Top gradient accent bar */}
+      <div className="h-[2px] shrink-0" style={{ background: "linear-gradient(90deg, #00ff41 0%, #00d4ff 50%, #00ff41 100%)" }} />
+
+      {/* Header — slim bar with glass effect */}
+      <header className="relative border-b border-border/20 bg-bg-secondary/80 backdrop-blur-sm pl-8 pr-6 py-2 shrink-0 h-9 flex items-center" style={{ boxShadow: "0 1px 12px rgba(0, 0, 0, 0.3)" }}>
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
-            <span className="text-green text-sm font-bold tracking-wider">HYPER COPY</span>
+            <span className="text-sm font-bold tracking-wider">
+              <span className="text-green" style={{ textShadow: "0 0 10px rgba(0, 255, 65, 0.4)" }}>HYPER</span>
+              <span className="text-amber" style={{ textShadow: "0 0 10px rgba(255, 176, 0, 0.4)" }}> COPY</span>
+            </span>
             <span className="text-text-dim text-xs">Pick the best trader. Start copying instantly.</span>
           </div>
           <div className="flex items-center gap-3 text-xs">
@@ -66,15 +72,18 @@ function Dashboard() {
                 </span>
                 <button
                   onClick={logout}
-                  className="text-text-dim hover:text-red transition-colors"
+                  className="text-text-dim hover:text-red transition-colors duration-200"
                 >
                   [logout]
                 </button>
               </>
             )}
             <span className="text-text-dim">
-              <span className="text-green">SYS</span> ONLINE
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green ml-1.5 align-middle" />
+              <span className="text-green" style={{ textShadow: "0 0 6px rgba(0, 255, 65, 0.3)" }}>SYS</span> ONLINE
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full bg-green ml-1.5 align-middle"
+                style={{ boxShadow: "0 0 6px rgba(0, 255, 65, 0.6), 0 0 12px rgba(0, 255, 65, 0.3)" }}
+              />
             </span>
             <span className="text-text-dim tabular-nums">
               {new Date().toLocaleDateString("en-US")}

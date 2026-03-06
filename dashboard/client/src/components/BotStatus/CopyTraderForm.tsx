@@ -12,19 +12,22 @@ function Label({ text, hint }: { text: string; hint: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mb-1">
-      <label className="flex items-center gap-1.5 text-text-dim text-xs">
+      <label className="flex items-center gap-1.5 text-text-dim text-xs tracking-wider">
         {text}
         <span
           onClick={(e) => { e.preventDefault(); setOpen((v) => !v); }}
-          className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border text-[9px] cursor-pointer transition-colors ${
-            open ? "border-amber text-amber" : "border-text-dim/40 text-text-dim hover:border-amber hover:text-amber"
+          className={`inline-flex items-center justify-center w-4 h-4 rounded-full border text-[9px] cursor-pointer transition-all duration-200 font-bold ${
+            open ? "border-amber text-amber shadow-[0_0_6px_rgba(255,176,0,0.3)]" : "border-text-dim/40 text-text-dim hover:border-amber hover:text-amber hover:shadow-[0_0_6px_rgba(255,176,0,0.2)]"
           }`}
         >
           ?
         </span>
       </label>
       {open && (
-        <div className="mt-1 text-[10px] text-text-dim/80 leading-relaxed bg-bg/50 border border-border/50 rounded px-2 py-1">
+        <div
+          className="mt-1 text-[10px] text-text-dim/80 leading-relaxed bg-bg/70 border border-border/50 rounded-lg px-2.5 py-1.5"
+          style={{ borderLeft: "2px solid rgba(255,176,0,0.4)" }}
+        >
           {hint}
         </div>
       )}
@@ -60,14 +63,26 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]" onClick={onClose}>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[60]"
+      style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
+      onClick={onClose}
+    >
       <div
-        className="bg-bg-secondary border border-green/30 rounded-lg w-[480px] max-h-[90vh] overflow-auto shadow-2xl shadow-green/5"
+        className="bg-bg-secondary rounded-lg w-[480px] max-h-[90vh] overflow-auto"
+        style={{
+          border: "1px solid transparent",
+          borderImage: "linear-gradient(180deg, #00ff4150, #00ff4120, #1e2a35) 1",
+          boxShadow: "0 0 40px rgba(0,255,65,0.08), 0 4px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(0,255,65,0.05)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-border">
+        <div
+          className="p-4 border-b border-border"
+          style={{ background: "linear-gradient(180deg, rgba(0,255,65,0.03) 0%, transparent 100%)" }}
+        >
           <div className="text-green text-sm">
-            {">"} configure_copy_bot<span className="cursor-blink">█</span>
+            <span style={{ textShadow: "0 0 8px rgba(0,255,65,0.4)" }}>{">"}</span> configure_copy_bot<span className="cursor-blink">█</span>
           </div>
         </div>
 
@@ -80,7 +95,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
               onChange={(e) => setTargetWallet(e.target.value)}
               placeholder="0x..."
               required
-              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs font-mono focus:border-green focus:outline-none"
+              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs font-mono focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
             />
           </div>
 
@@ -92,7 +107,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
                 step="0.1"
                 value={sizeMultiplier}
                 onChange={(e) => setSizeMultiplier(e.target.value)}
-                className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none"
+                className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
               />
             </div>
             <div>
@@ -101,7 +116,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
                 type="number"
                 value={maxLeverage}
                 onChange={(e) => setMaxLeverage(e.target.value)}
-                className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none"
+                className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
               />
             </div>
           </div>
@@ -112,7 +127,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
               type="number"
               value={maxPositionSizePercent}
               onChange={(e) => setMaxPositionSizePercent(e.target.value)}
-              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none"
+              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
             />
           </div>
 
@@ -123,7 +138,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
               value={blockedAssets}
               onChange={(e) => setBlockedAssets(e.target.value)}
               placeholder="BTC, ETH"
-              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none"
+              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_4px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_4px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
             />
           </div>
 
@@ -133,13 +148,16 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
               id="dryRun"
               checked={dryRun}
               onChange={(e) => setDryRun(e.target.checked)}
-              className="accent-green"
+              className="accent-green w-4 h-4 cursor-pointer"
             />
             <Label text="DRY_RUN" hint="When enabled, the bot logs all trade decisions but does not execute any orders. Use this to test your configuration safely before going live." />
           </div>
 
           {startBot.error && (
-            <div className="text-red text-xs border border-red/30 rounded p-2 bg-red/5">
+            <div
+              className="text-red text-xs border border-red/30 rounded-lg p-2.5 bg-red/5"
+              style={{ borderLeft: "3px solid rgba(255,0,64,0.6)" }}
+            >
               ERR: {(startBot.error as Error).message}
             </div>
           )}
@@ -148,7 +166,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
             <button
               type="submit"
               disabled={startBot.isPending || !targetWallet}
-              className="flex-1 py-2 bg-green/10 border border-green text-green hover:bg-green/20 transition-colors text-sm rounded disabled:opacity-50"
+              className="flex-1 py-2.5 bg-green/10 border border-green text-green hover:bg-green/20 transition-all duration-200 text-sm rounded disabled:opacity-50 shadow-[0_0_12px_rgba(0,255,65,0.1),inset_0_1px_0_rgba(0,255,65,0.1)] hover:shadow-[0_0_20px_rgba(0,255,65,0.2),inset_0_1px_0_rgba(0,255,65,0.15)]"
             >
               {startBot.isPending
                 ? isBotRunning
@@ -161,7 +179,7 @@ export function CopyTraderForm({ initialConfig, onClose, isBotRunning }: Props) 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-border text-text-dim hover:text-text hover:border-text transition-colors text-sm rounded"
+              className="px-4 py-2.5 border border-border text-text-dim hover:text-text hover:border-text transition-all duration-200 text-sm rounded hover:bg-white/[0.03]"
             >
               [cancel]
             </button>

@@ -142,20 +142,25 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
       {/* Title row */}
-      <div className="flex items-center gap-4 px-4 py-3 shrink-0 flex-wrap">
-        <span className="text-green text-sm font-bold tracking-wider">LEADERBOARD</span>
+      <div className="flex items-center gap-4 px-4 py-3 shrink-0 flex-wrap border-b border-border/30">
+        <span
+          className="text-green text-sm font-bold tracking-wider"
+          style={{ textShadow: "0 0 10px rgba(0,255,65,0.4), 0 0 20px rgba(0,255,65,0.15)" }}
+        >
+          LEADERBOARD
+        </span>
 
-        {/* Time window selector — hidden when smart filter is active */}
+        {/* Time window selector -- hidden when smart filter is active */}
         {!smartFilterOn && (
-          <div className="flex gap-1">
+          <div className="flex gap-1 bg-bg/60 rounded-full p-0.5 border border-border/40">
             {WINDOWS.map((w) => (
               <button
                 key={w.key}
                 onClick={() => setWindow(w.key)}
-                className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                className={`px-3 py-1 text-xs rounded-full transition-all duration-200 ${
                   window === w.key
-                    ? "bg-green/15 text-green border border-green/40"
-                    : "text-text-dim hover:text-text border border-transparent"
+                    ? "bg-green/15 text-green border border-green/40 shadow-[0_0_8px_rgba(0,255,65,0.2)]"
+                    : "text-text-dim hover:text-text border border-transparent hover:bg-white/[0.03]"
                 }`}
               >
                 {w.label}
@@ -170,14 +175,14 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
           placeholder="search trader..."
-          className="w-36 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none"
+          className="w-36 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
         />
 
-        {/* Filters toggle — hidden when smart filter is active */}
+        {/* Filters toggle -- hidden when smart filter is active */}
         {!smartFilterOn && (
           <button
             onClick={() => setFiltersOpen((v) => !v)}
-            className={`text-xs px-2 py-1 transition-colors ${
+            className={`text-xs px-2 py-1 transition-all duration-200 ${
               filtersOpen || minAcct || maxAcct
                 ? "text-amber"
                 : "text-text-dim hover:text-text"
@@ -190,15 +195,15 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
         {/* Smart Filter toggle */}
         <button
           onClick={() => setSmartFilterOn((v) => !v)}
-          className={`text-xs px-3 py-1 rounded border transition-colors flex items-center gap-1.5 ${
+          className={`text-xs px-3 py-1 rounded-full border transition-all duration-200 flex items-center gap-1.5 ${
             smartFilterOn
-              ? "bg-green/15 text-green border-green/40"
-              : "text-text-dim hover:text-amber border-border hover:border-amber/40"
+              ? "bg-green/15 text-green border-green/40 shadow-[0_0_10px_rgba(0,255,65,0.2)]"
+              : "text-text-dim hover:text-amber border-border hover:border-amber/40 hover:shadow-[0_0_8px_rgba(255,176,0,0.1)]"
           }`}
         >
           <span
-            className={`inline-block w-1.5 h-1.5 rounded-full ${
-              smartFilterOn ? "bg-green" : "bg-text-dim"
+            className={`inline-block w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+              smartFilterOn ? "bg-green shadow-[0_0_6px_rgba(0,255,65,0.6)]" : "bg-text-dim"
             }`}
           />
           SMART FILTER{smartFilterOn && smartFilterLoading && (
@@ -216,39 +221,40 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
 
       {/* Stats banner when smart filter is active */}
       {smartFilterOn && smartFilterData && (
-        <div className="flex items-center gap-4 px-4 pb-2 text-xs shrink-0 flex-wrap">
-          <span className="text-amber tabular-nums">
-            EQUITY: {formatUSD(smartFilterData.userEquity)}
-          </span>
-          <span className="text-text-dim">|</span>
-          <span className="text-text-dim tabular-nums">
-            POOL: <span className="text-text">{smartFilterData.stats.total}</span>
-          </span>
-          <span className="text-text-dim">|</span>
-          <span className="text-text-dim tabular-nums">
-            SIZE: <span className="text-text">{smartFilterData.stats.afterSize}</span>
-          </span>
-          <span className="text-text-dim">|</span>
-          <span className="text-text-dim tabular-nums">
-            ACTIVE: <span className="text-text">{smartFilterData.stats.afterActivity}</span>
-          </span>
-          <span className="text-text-dim">|</span>
-          <span className="text-text-dim tabular-nums">
-            ELIGIBLE: <span className="text-green">{smartFilterData.stats.afterPerformance}</span>
-          </span>
+        <div className="flex items-center gap-2 px-4 py-2.5 text-xs shrink-0 flex-wrap border-b border-border/30 bg-bg/40">
+          <div className="flex items-center gap-2 bg-amber/[0.06] border border-amber/20 rounded px-2.5 py-1">
+            <span className="text-text-dim text-[10px]">EQUITY</span>
+            <span className="text-amber tabular-nums">{formatUSD(smartFilterData.userEquity)}</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/[0.02] border border-border/40 rounded px-2.5 py-1">
+            <span className="text-text-dim text-[10px]">POOL</span>
+            <span className="text-text tabular-nums">{smartFilterData.stats.total}</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/[0.02] border border-border/40 rounded px-2.5 py-1">
+            <span className="text-text-dim text-[10px]">SIZE</span>
+            <span className="text-text tabular-nums">{smartFilterData.stats.afterSize}</span>
+          </div>
+          <div className="flex items-center gap-2 bg-white/[0.02] border border-border/40 rounded px-2.5 py-1">
+            <span className="text-text-dim text-[10px]">ACTIVE</span>
+            <span className="text-text tabular-nums">{smartFilterData.stats.afterActivity}</span>
+          </div>
+          <div className="flex items-center gap-2 bg-green/[0.06] border border-green/20 rounded px-2.5 py-1">
+            <span className="text-text-dim text-[10px]">ELIGIBLE</span>
+            <span className="text-green tabular-nums">{smartFilterData.stats.afterPerformance}</span>
+          </div>
         </div>
       )}
 
-      {/* Collapsible advanced filters — hidden when smart filter is active */}
+      {/* Collapsible advanced filters -- hidden when smart filter is active */}
       {!smartFilterOn && filtersOpen && (
-        <div className="flex items-center gap-3 px-4 pb-3 text-xs shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 text-xs shrink-0 border-b border-border/30 bg-bg/30">
           <span className="text-text-dim">min$</span>
           <input
             type="number"
             value={minAcct}
             onChange={(e) => setMinAcct(e.target.value)}
             placeholder="0"
-            className="w-24 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none"
+            className="w-24 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
           />
           <span className="text-text-dim">max$</span>
           <input
@@ -256,12 +262,12 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
             value={maxAcct}
             onChange={(e) => setMaxAcct(e.target.value)}
             placeholder="---"
-            className="w-24 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none"
+            className="w-24 bg-bg border border-border rounded px-2 py-1 text-text text-xs focus:border-green focus:outline-none transition-all duration-200 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)] focus:shadow-[inset_0_1px_3px_rgba(0,0,0,0.3),0_0_8px_rgba(0,255,65,0.15)]"
           />
           {(minAcct || maxAcct) && (
             <button
               onClick={() => { setMinAcct(""); setMaxAcct(""); }}
-              className="text-text-dim hover:text-red text-xs transition-colors"
+              className="text-text-dim hover:text-red text-xs transition-all duration-200"
             >
               clear
             </button>
@@ -279,7 +285,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
       >
         {/* Smart filter loading state */}
         {smartFilterOn && smartFilterLoading && (
-          <div className="text-green text-center py-8 text-sm">
+          <div className="text-green text-center py-8 text-sm animate-pulse">
             Running smart filter analysis<span className="cursor-blink">_</span>
           </div>
         )}
@@ -293,7 +299,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
 
         {/* Normal loading state */}
         {!smartFilterOn && isLoading && !data && (
-          <div className="text-green text-center py-8 text-sm">
+          <div className="text-green text-center py-8 text-sm animate-pulse">
             Loading leaderboard data<span className="cursor-blink">_</span>
           </div>
         )}
@@ -318,12 +324,12 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
         {/* === SMART FILTER TABLE === */}
         {showSmartView && (
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-bg z-10">
-              <tr className="text-text-dim border-b border-border">
+            <thead className="sticky top-0 z-10" style={{ background: "linear-gradient(180deg, #0f1419 0%, #0a0e14 100%)" }}>
+              <tr className="text-text-dim border-b border-border/60">
                 {SMART_COLUMNS.map((col) => (
                   <th
                     key={col.key}
-                    className={`${col.align === "right" ? "text-right" : "text-left"} py-2.5 px-2 text-xs font-bold tracking-wider uppercase ${
+                    className={`${col.align === "right" ? "text-right" : "text-left"} py-3 px-2 text-xs font-bold tracking-wider uppercase ${
                       col.key === "rank" ? "w-10" : ""
                     } ${col.key === "vol24h" ? "pr-6" : ""}`}
                   >
@@ -344,11 +350,11 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
                   <tr
                     key={result.trader.address}
                     onClick={() => onSelectTrader(result.trader)}
-                    className={`row-hover-accent cursor-pointer transition-colors ${
+                    className={`cursor-pointer transition-all duration-150 ${
                       selectedAddress === result.trader.address
-                        ? "bg-green/20 border-l-[3px] border-l-green shadow-[inset_0_0_12px_rgba(0,255,65,0.08)]"
+                        ? "bg-green/[0.12] border-l-[3px] border-l-green shadow-[inset_0_0_20px_rgba(0,255,65,0.06),0_0_8px_rgba(0,255,65,0.05)]"
                         : idx % 2 === 0 ? "row-even" : "row-odd"
-                    }`}
+                    } hover:bg-green/[0.05] hover:shadow-[inset_3px_0_0_rgba(0,255,65,0.4)]`}
                     style={{ minHeight: "40px" }}
                   >
                     <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{idx + 1}</td>
@@ -400,13 +406,13 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
         {/* === NORMAL LEADERBOARD TABLE === */}
         {!smartFilterOn && data && (
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-bg z-10">
-              <tr className="text-text-dim border-b border-border">
+            <thead className="sticky top-0 z-10" style={{ background: "linear-gradient(180deg, #0f1419 0%, #0a0e14 100%)" }}>
+              <tr className="text-text-dim border-b border-border/60">
                 {COLUMNS.map((col) => (
                   <th
                     key={col.key}
-                    className={`${col.align === "right" ? "text-right" : "text-left"} py-2.5 px-2 text-xs font-bold tracking-wider uppercase ${
-                      col.sortable ? "cursor-pointer select-none hover:text-amber transition-colors" : ""
+                    className={`${col.align === "right" ? "text-right" : "text-left"} py-3 px-2 text-xs font-bold tracking-wider uppercase ${
+                      col.sortable ? "cursor-pointer select-none hover:text-amber transition-all duration-200" : ""
                     } ${col.key === "rank" ? "w-10" : ""} ${col.key === "volume" ? "pr-6" : ""}`}
                     onClick={() => {
                       if (col.sortable && col.sortField) toggleSort(col.sortField);
@@ -415,7 +421,7 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
                     <span className="inline-flex items-center gap-1">
                       {col.label}
                       {col.sortable && col.sortField && sort === col.sortField && (
-                        <span className="text-amber text-[10px]">{order === "desc" ? "DESC" : "ASC"}</span>
+                        <span className="text-amber text-[10px] bg-amber/10 px-1 py-0.5 rounded">{order === "desc" ? "DESC" : "ASC"}</span>
                       )}
                     </span>
                   </th>
@@ -427,11 +433,11 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
                 <tr
                   key={t.address}
                   onClick={() => onSelectTrader(t)}
-                  className={`row-hover-accent cursor-pointer transition-colors ${
+                  className={`cursor-pointer transition-all duration-150 ${
                     selectedAddress === t.address
-                      ? "bg-green/20 border-l-[3px] border-l-green shadow-[inset_0_0_12px_rgba(0,255,65,0.08)]"
+                      ? "bg-green/[0.12] border-l-[3px] border-l-green shadow-[inset_0_0_20px_rgba(0,255,65,0.06),0_0_8px_rgba(0,255,65,0.05)]"
                       : idx % 2 === 0 ? "row-even" : "row-odd"
-                  }`}
+                  } hover:bg-green/[0.05] hover:shadow-[inset_3px_0_0_rgba(0,255,65,0.4)]`}
                   style={{ minHeight: "40px" }}
                 >
                   <td className="py-2.5 px-2 text-text-dim tabular-nums text-sm">{t.rank}</td>
@@ -468,11 +474,11 @@ export function LeaderboardTable({ onSelectTrader, selectedAddress, favoriteTrad
           </div>
         )}
 
-        {/* Infinite scroll trigger — only when smart filter is off AND not filtering */}
+        {/* Infinite scroll trigger -- only when smart filter is off AND not filtering */}
         {!smartFilterOn && !filterText && hasNextPage && (
           <div ref={loadMoreRef} className="py-4 text-center">
             {isFetchingNextPage ? (
-              <span className="text-green text-xs">
+              <span className="text-green text-xs animate-pulse">
                 Loading more traders<span className="cursor-blink">_</span>
               </span>
             ) : (

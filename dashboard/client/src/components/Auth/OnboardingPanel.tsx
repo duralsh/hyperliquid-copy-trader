@@ -20,17 +20,19 @@ function StepIndicator({ current }: { current: WizardStep }) {
           <div key={s} className="flex items-center gap-2">
             <div
               className={`
-                w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold border
+                w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all duration-300
                 ${isActive ? "border-green bg-green/15 text-green" : ""}
                 ${isDone ? "border-green/40 bg-green/10 text-green/60" : ""}
-                ${!isActive && !isDone ? "border-border bg-bg text-text-dim" : ""}
+                ${!isActive && !isDone ? "border-[#1e2a35] bg-[#0a0e14] text-text-dim" : ""}
               `}
+              style={isActive ? { boxShadow: '0 0 10px rgba(0,255,65,0.25)' } : undefined}
             >
               {isDone ? "\u2713" : s}
             </div>
             {s < 4 && (
               <div
-                className={`w-6 h-px ${s < current ? "bg-green/40" : "bg-border"}`}
+                className={`w-6 h-px transition-colors duration-300 ${s < current ? "bg-green/40" : "bg-[#1e2a35]"}`}
+                style={s < current ? { boxShadow: '0 0 4px rgba(0,255,65,0.15)' } : undefined}
               />
             )}
           </div>
@@ -57,7 +59,11 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="text-[10px] px-2 py-1 border border-border rounded text-text-dim hover:text-amber hover:border-amber/40 transition-colors"
+      className={`text-[10px] px-2.5 py-1 border rounded font-bold tracking-wider transition-all duration-300 ${
+        copied
+          ? "border-green/40 text-green bg-green/10"
+          : "border-[#1e2a35] text-text-dim hover:text-amber hover:border-amber/40 hover:bg-amber/5"
+      }`}
     >
       {copied ? "COPIED" : "COPY"}
     </button>
@@ -188,22 +194,22 @@ Verification Code: ${verificationCode}`;
   return (
     <div className="flex flex-col h-full p-4">
       {/* Header */}
-      <div className="text-green text-sm font-bold tracking-wider mb-1">
+      <div className="text-green text-sm font-bold tracking-wider mb-1" style={{ textShadow: '0 0 12px rgba(0,255,65,0.3)' }}>
         {">"} ARENA ONBOARDING
         <span className="cursor-blink">_</span>
       </div>
       <div className="text-text-dim text-xs mb-4">
-        Welcome, <span className="text-amber">{user?.username}</span>. Complete
+        Welcome, <span className="text-amber" style={{ textShadow: '0 0 6px rgba(255,176,0,0.2)' }}>{user?.username}</span>. Complete
         setup to start copy-trading.
       </div>
 
       <StepIndicator current={step} />
 
-      {/* ── Step 1: Private Key ── */}
+      {/* -- Step 1: Private Key -- */}
       {step === 1 && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-3 rounded border border-[#1e2a35]/40 bg-[#151b23]/20">
           <div>
-            <label className="text-text-dim text-xs block mb-1">
+            <label className="text-text-dim text-xs block mb-1.5 tracking-wider">
               PRIVATE KEY
             </label>
             <div className="relative">
@@ -211,21 +217,22 @@ Verification Code: ${verificationCode}`;
                 type={showKey ? "text" : "password"}
                 value={privateKey}
                 onChange={(e) => setPrivateKey(e.target.value)}
-                className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-sm focus:border-green focus:outline-none font-mono pr-12"
+                className="w-full bg-[#0a0e14] border border-[#1e2a35]/60 rounded px-3 py-2.5 text-text text-sm focus:border-green/60 focus:outline-none font-mono pr-14 transition-all duration-300 focus:shadow-[0_0_8px_rgba(0,255,65,0.12),inset_0_1px_4px_rgba(0,0,0,0.4)]"
+                style={{ boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)' }}
                 placeholder="0x..."
                 autoComplete="off"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-dim hover:text-amber text-xs transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-dim hover:text-amber text-[10px] font-bold tracking-wider transition-all duration-300 px-1.5 py-0.5 rounded hover:bg-amber/10"
               >
                 {showKey ? "HIDE" : "SHOW"}
               </button>
             </div>
           </div>
 
-          <div className="text-text-dim text-[10px] flex items-center gap-1">
+          <div className="text-text-dim text-[10px] flex items-center gap-1.5 px-2 py-1.5 rounded bg-[#0a0e14]/50 border border-[#1e2a35]/20">
             <svg
               width="10"
               height="10"
@@ -244,39 +251,42 @@ Verification Code: ${verificationCode}`;
             type="button"
             onClick={handleNextToRegister}
             disabled={!privateKey.trim()}
-            className="w-full py-2.5 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider hover:bg-green/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-green/10 border border-green/30 text-green font-bold text-sm rounded tracking-wider hover:bg-green/20 hover:border-green/50 hover:shadow-[0_0_16px_rgba(0,255,65,0.15)] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            style={{ textShadow: '0 0 8px rgba(0,255,65,0.2)' }}
           >
             {">"} NEXT
           </button>
         </div>
       )}
 
-      {/* ── Step 2: Register Agent ── */}
+      {/* -- Step 2: Register Agent -- */}
       {step === 2 && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 p-3 rounded border border-[#1e2a35]/40 bg-[#151b23]/20">
           <div>
-            <label className="text-text-dim text-xs block mb-1">
+            <label className="text-text-dim text-xs block mb-1.5 tracking-wider">
               AGENT NAME
             </label>
             <input
               type="text"
               value={agentName}
               onChange={(e) => setAgentName(e.target.value)}
-              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-sm focus:border-green focus:outline-none font-mono"
+              className="w-full bg-[#0a0e14] border border-[#1e2a35]/60 rounded px-3 py-2.5 text-text text-sm focus:border-green/60 focus:outline-none font-mono transition-all duration-300 focus:shadow-[0_0_8px_rgba(0,255,65,0.12),inset_0_1px_4px_rgba(0,0,0,0.4)]"
+              style={{ boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)' }}
               placeholder="My Trading Agent"
               autoComplete="off"
             />
           </div>
 
           <div>
-            <label className="text-text-dim text-xs block mb-1">
+            <label className="text-text-dim text-xs block mb-1.5 tracking-wider">
               AGENT HANDLE
             </label>
             <input
               type="text"
               value={agentHandle}
               onChange={(e) => setAgentHandle(e.target.value)}
-              className="w-full bg-bg border border-border rounded px-3 py-2 text-text text-sm focus:border-green focus:outline-none font-mono"
+              className="w-full bg-[#0a0e14] border border-[#1e2a35]/60 rounded px-3 py-2.5 text-text text-sm focus:border-green/60 focus:outline-none font-mono transition-all duration-300 focus:shadow-[0_0_8px_rgba(0,255,65,0.12),inset_0_1px_4px_rgba(0,0,0,0.4)]"
+              style={{ boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.3)' }}
               placeholder="my_trading_agent"
               autoComplete="off"
             />
@@ -285,7 +295,7 @@ Verification Code: ${verificationCode}`;
             </div>
           </div>
 
-          <div className="bg-bg border border-border rounded p-2 text-xs">
+          <div className="bg-[#0a0e14] border border-[#1e2a35]/40 rounded p-2.5 text-xs">
             <span className="text-text-dim">WALLET: </span>
             <span className="text-amber text-[10px]">
               Will be derived from your private key
@@ -293,14 +303,14 @@ Verification Code: ${verificationCode}`;
           </div>
 
           {registerError && (
-            <div className="text-red text-xs py-1">ERR: {registerError}</div>
+            <div className="text-red text-xs py-1.5 px-2.5 bg-red/5 border-l-2 border-red/40 rounded-r">ERR: {registerError}</div>
           )}
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="px-4 py-2.5 border border-border text-text-dim font-bold text-sm rounded tracking-wider hover:text-text hover:border-text-dim transition-colors"
+              className="px-4 py-2.5 border border-[#1e2a35] text-text-dim font-bold text-sm rounded tracking-wider hover:text-text hover:border-[#5a7a94]/40 hover:bg-[#151b23]/30 transition-all duration-300"
             >
               {"<"} BACK
             </button>
@@ -310,7 +320,8 @@ Verification Code: ${verificationCode}`;
               disabled={
                 registerLoading || !agentName.trim() || !agentHandle.trim()
               }
-              className="flex-1 py-2.5 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider hover:bg-green/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-2.5 bg-green/10 border border-green/30 text-green font-bold text-sm rounded tracking-wider hover:bg-green/20 hover:border-green/50 hover:shadow-[0_0_16px_rgba(0,255,65,0.15)] active:scale-[0.98] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              style={{ textShadow: '0 0 8px rgba(0,255,65,0.2)' }}
             >
               {registerLoading ? (
                 <span>
@@ -325,11 +336,11 @@ Verification Code: ${verificationCode}`;
         </div>
       )}
 
-      {/* ── Step 3: Claim Agent ── */}
+      {/* -- Step 3: Claim Agent -- */}
       {step === 3 && (
         <div className="flex flex-col gap-3">
           {/* Wallet address */}
-          <div className="bg-bg border border-border rounded p-2 text-xs break-all">
+          <div className="bg-[#0a0e14] border border-[#1e2a35]/40 rounded p-2.5 text-xs break-all">
             <span className="text-text-dim">WALLET: </span>
             <span className="text-amber font-mono text-[10px]">
               {walletAddress}
@@ -337,12 +348,12 @@ Verification Code: ${verificationCode}`;
           </div>
 
           {/* Verification code */}
-          <div className="bg-bg border border-green/40 rounded p-3">
-            <div className="text-text-dim text-[10px] mb-2 tracking-wider">
+          <div className="bg-[#0a0e14] border border-green/30 rounded p-3" style={{ boxShadow: '0 0 8px rgba(0,255,65,0.08)' }}>
+            <div className="text-text-dim text-[10px] mb-2 tracking-wider font-bold">
               VERIFICATION CODE
             </div>
             <div className="flex items-center justify-between gap-2">
-              <code className="text-green text-sm font-bold break-all">
+              <code className="text-green text-sm font-bold break-all" style={{ textShadow: '0 0 8px rgba(0,255,65,0.2)' }}>
                 {verificationCode}
               </code>
               <CopyButton text={verificationCode} />
@@ -350,11 +361,11 @@ Verification Code: ${verificationCode}`;
           </div>
 
           {/* Claim instructions */}
-          <div className="bg-bg border border-border rounded p-3">
-            <div className="text-text-dim text-[10px] mb-2 tracking-wider">
+          <div className="bg-[#0a0e14] border border-[#1e2a35]/40 rounded p-3">
+            <div className="text-text-dim text-[10px] mb-2 tracking-wider font-bold">
               POST THE FOLLOWING FROM YOUR STARSARENA ACCOUNT
             </div>
-            <div className="bg-bg-secondary border border-border rounded p-2 text-xs text-text font-mono whitespace-pre-wrap mb-2">
+            <div className="bg-[#151b23]/40 border border-[#1e2a35]/30 rounded p-2.5 text-xs text-text font-mono whitespace-pre-wrap mb-2" style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)' }}>
               {claimText}
             </div>
             <div className="flex justify-end">
@@ -363,8 +374,8 @@ Verification Code: ${verificationCode}`;
           </div>
 
           {/* API Key */}
-          <div className="bg-bg border border-amber/40 rounded p-3">
-            <div className="text-amber text-[10px] mb-2 tracking-wider font-bold">
+          <div className="bg-[#0a0e14] border border-amber/30 rounded p-3" style={{ boxShadow: '0 0 8px rgba(255,176,0,0.08)' }}>
+            <div className="text-amber text-[10px] mb-2 tracking-wider font-bold" style={{ textShadow: '0 0 6px rgba(255,176,0,0.2)' }}>
               SAVE THIS API KEY &mdash; SHOWN ONLY ONCE
             </div>
             <div className="flex items-center justify-between gap-2">
@@ -378,19 +389,20 @@ Verification Code: ${verificationCode}`;
           <button
             type="button"
             onClick={handleClaimed}
-            className="w-full py-2.5 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider hover:bg-green/25 transition-colors"
+            className="w-full py-3 bg-green/10 border border-green/30 text-green font-bold text-sm rounded tracking-wider hover:bg-green/20 hover:border-green/50 hover:shadow-[0_0_16px_rgba(0,255,65,0.15)] active:scale-[0.98] transition-all duration-300"
+            style={{ textShadow: '0 0 8px rgba(0,255,65,0.2)' }}
           >
             {">"} I'VE CLAIMED THE AGENT
           </button>
         </div>
       )}
 
-      {/* ── Step 4: Complete Setup ── */}
+      {/* -- Step 4: Complete Setup -- */}
       {step === 4 && (
         <div className="flex flex-col gap-3">
           {completeLoading && (
-            <div className="text-center py-8">
-              <div className="text-green text-sm font-bold tracking-wider mb-3">
+            <div className="text-center py-8 p-4 rounded border border-[#1e2a35]/40 bg-[#151b23]/20">
+              <div className="text-green text-sm font-bold tracking-wider mb-3" style={{ textShadow: '0 0 12px rgba(0,255,65,0.3)' }}>
                 COMPLETING ARENA REGISTRATION
                 <span className="cursor-blink">_</span>
               </div>
@@ -406,11 +418,11 @@ Verification Code: ${verificationCode}`;
 
           {completeError && (
             <div className="py-4">
-              <div className="text-red text-xs mb-3">ERR: {completeError}</div>
+              <div className="text-red text-xs mb-3 px-2.5 py-1.5 bg-red/5 border-l-2 border-red/40 rounded-r">ERR: {completeError}</div>
               <button
                 type="button"
                 onClick={retryComplete}
-                className="w-full py-2.5 bg-red/10 border border-red/40 text-red font-bold text-sm rounded tracking-wider hover:bg-red/20 transition-colors"
+                className="w-full py-3 bg-red/10 border border-red/30 text-red font-bold text-sm rounded tracking-wider hover:bg-red/20 hover:border-red/50 hover:shadow-[0_0_12px_rgba(255,0,64,0.15)] active:scale-[0.98] transition-all duration-300"
               >
                 {">"} RETRY
               </button>
@@ -419,14 +431,14 @@ Verification Code: ${verificationCode}`;
 
           {finalWalletAddress && (
             <div className="py-4">
-              <div className="text-green text-sm font-bold tracking-wider mb-3">
+              <div className="text-green text-sm font-bold tracking-wider mb-3" style={{ textShadow: '0 0 12px rgba(0,255,65,0.3)' }}>
                 {">"} ONBOARDING COMPLETE
                 <span className="cursor-blink">{"\u2588"}</span>
               </div>
               <div className="text-green text-xs mb-3">
                 Wallet connected and agent registered successfully.
               </div>
-              <div className="bg-bg border border-green/30 rounded p-3 text-xs break-all mb-4">
+              <div className="bg-[#0a0e14] border border-green/20 rounded p-3 text-xs break-all mb-4" style={{ boxShadow: '0 0 6px rgba(0,255,65,0.05)' }}>
                 <span className="text-text-dim">ADDRESS: </span>
                 <span className="text-amber font-mono">
                   {finalWalletAddress}
@@ -435,7 +447,8 @@ Verification Code: ${verificationCode}`;
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="w-full py-2.5 bg-green/15 border border-green/40 text-green font-bold text-sm rounded tracking-wider hover:bg-green/25 transition-colors"
+                className="w-full py-3 bg-green/10 border border-green/30 text-green font-bold text-sm rounded tracking-wider hover:bg-green/20 hover:border-green/50 hover:shadow-[0_0_16px_rgba(0,255,65,0.15)] active:scale-[0.98] transition-all duration-300"
+                style={{ textShadow: '0 0 8px rgba(0,255,65,0.2)' }}
               >
                 {">"} CONTINUE
               </button>
